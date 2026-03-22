@@ -21,6 +21,18 @@
         Replace this page with your app. Connect the repo in the Azure portal and
         push to <code>main</code> to ship updates automatically.
       </p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btn-scan-qr">
+          Scan QR code
+        </button>
+      </div>
+      <div class="qr-result" id="qr-result" hidden>
+        <p class="qr-result-label">Scanned text</p>
+        <pre class="qr-result-text" id="qr-result-text"></pre>
+        <button type="button" class="btn btn-ghost btn-small" id="qr-copy">
+          Copy
+        </button>
+      </div>
       <ul class="meta">
         <li><span class="label">Config</span> <code>staticwebapp.config.json</code></li>
         <li><span class="label">Workflow</span> <code>.github/workflows/</code></li>
@@ -29,6 +41,21 @@
         <small>© <span id="year"></span></small>
       </footer>
     </main>
+
+    <dialog id="qr-dialog" class="qr-dialog" aria-labelledby="qr-dialog-title">
+      <div class="qr-dialog-panel">
+        <h2 id="qr-dialog-title" class="qr-dialog-title">Scan QR code</h2>
+        <p class="qr-dialog-hint">
+          Allow camera access when prompted. Point at a QR code to read it.
+        </p>
+        <div id="qr-reader" class="qr-reader"></div>
+        <p class="qr-dialog-error" id="qr-dialog-error" hidden></p>
+        <div class="qr-dialog-actions">
+          <button type="button" class="btn btn-ghost" id="qr-cancel">Cancel</button>
+        </div>
+      </div>
+    </dialog>
+
     <script src="js/app.js" type="module"></script>
   </body>
 </html>
