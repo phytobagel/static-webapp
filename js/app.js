@@ -1,5 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { supabaseUrl, supabaseAnonKey } from "./supabase-config.js";
+const SUPABASE_ESM = [
+  "https://esm.sh/@supabase/supabase-js@2.49.4",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm",
+];
 
 const LIB_URL =
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
@@ -35,7 +37,44 @@ let supabase = null;
 let scanner = null;
 let scanning = false;
 
-function showSetupMissing() {
+function validateSupabaseConfig(url, key) {
+  if (!url || !key) return { ok: false, reason: "empty" };
+  if (url.includes("azurestaticapps.net")) {
+    return {
+      ok: false,
+      reason: "wrong-host",
+      detail:
+        "This value is your Azure Static Web App address. In Supabase open Project Settings → API and copy the Project URL (it ends with .supabase.co).",
+    };
+  }
+  if (!url.includes("supabase.co")) {
+    return {
+      ok: false,
+      reason: "wrong-host",
+      detail:
+        "Project URL should be https://YOUR-REF.supabase.co from Supabase → Project Settings → API (unless you use a custom Supabase API domain).",
+    };
+  }
+  if (key.length < 120 || !key.startsWith("eyJ")) {
+    return {
+      ok: false,
+      reason: "bad-key",
+      detail:
+        "Anon key looks wrong — copy the full anon public key from Supabase (long text starting with eyJ).",
+    };
+  }
+  return { ok: true };
+}
+
+function showSetupMissing(detail) {
+  if (detail?.detail && setupBannerTitle && setupBannerBody) {
+    setupBannerTitle.textContent = "Supabase settings look incorrect.";
+    setupBannerBody.textContent = detail.detail;
+  } else if (setupBannerTitle && setupBannerBody) {
+    setupBannerTitle.textContent = "Supabase not configured.";
+    setupBannerBody.innerHTML =
+      'Edit <code>js/supabase-config.js</code> with your <strong>Supabase</strong> project URL (<code>…supabase.co</code>) and anon key — not your Azure site URL. Then redeploy.';
+  }
   setupBanner?.removeAttribute("hidden");
   authGate?.setAttribute("hidden", "");
   appBlock?.setAttribute("hidden", "");
@@ -59,8 +98,31 @@ function showApp(session) {
 async function finishUrlAuth(client) {
   const url = new URL(window.location.href);
   if (!url.searchParams.has("code")) return;
-  await client.auth.exchangeCodeForSession(window.location.href);
-  window.history.replaceState({}, document.title, url.pathname + url.hash);
+  try {
+    const { error } = await client.auth.exchangeCodeForSession(
+      window.location.href
+    );
+    if (!error) {
+      window.history.replaceState({}, document.title, url.pathname + url.hash);
+    }
+  } catch {
+    /* stale or invalid ?code= in URL */
+  }
+}
+
+async function loadCreateClient() {
+  let lastErr;
+  for (const href of SUPABASE_ESM) {
+    try {
+      const m = await import(href);
+      if (typeof m.createClient === "function") return m.createClient;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error("Could not load Supabase client from CDN.");
 }
 
 async function refreshScans() {
@@ -106,6 +168,24 @@ function applySession(session) {
 }
 
 async function initSupabase() {
+  let supabaseUrl;
+  let supabaseAnonKey;
+  try {
+    const cfg = await import("./supabase-config.js");
+    supabaseUrl = cfg.supabaseUrl;
+    supabaseAnonKey = cfg.supabaseAnonKey;
+  } catch {
+    if (setupBannerTitle && setupBannerBody) {
+      setupBannerTitle.textContent = "Could not load config";
+      setupBannerBody.textContent =
+        "The browser could not load js/supabase-config.js. Ensure it is deployed and the path is correct.";
+    }
+    setupBanner?.removeAttribute("hidden");
+    authGate?.setAttribute("hidden", "");
+    appBlock?.setAttribute("hidden", "");
+    return;
+  }
+
   if (!supabaseUrl?.trim() || !supabaseAnonKey?.trim()) {
     showSetupMissing();
     return;
@@ -124,25 +204,47 @@ async function initSupabase() {
     return;
   }
 
-  supabase = createClient(normalizedUrl, normalizedKey, {
-    auth: {
-      flowType: "pkce",
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
+  let createClient;
+  try {
+    createClient = await loadCreateClient();
+  } catch (e) {
+    showAuthGate();
+    if (magicMsg) {
+      magicMsg.textContent =
+        e instanceof Error
+          ? `${e.message} Try another network or disable extensions that block scripts.`
+          : "Could not load Supabase. Check your network or ad blocker.";
+    }
+    return;
+  }
 
-  await finishUrlAuth(supabase);
+  try {
+    supabase = createClient(normalizedUrl, normalizedKey, {
+      auth: {
+        flowType: "pkce",
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  applySession(session);
+    await finishUrlAuth(supabase);
 
-  supabase.auth.onAuthStateChange((_event, next) => {
-    applySession(next);
-  });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    applySession(session);
+
+    supabase.auth.onAuthStateChange((_event, next) => {
+      applySession(next);
+    });
+  } catch (e) {
+    showAuthGate();
+    if (magicMsg) {
+      magicMsg.textContent =
+        e instanceof Error ? e.message : "Something went wrong starting Supabase.";
+    }
+  }
 }
 
 magicForm?.addEventListener("submit", async (e) => {
@@ -350,4 +452,10 @@ btnCopy?.addEventListener("click", async () => {
   }
 });
 
-void initSupabase();
+void initSupabase().catch((e) => {
+  showAuthGate();
+  if (magicMsg) {
+    magicMsg.textContent =
+      e instanceof Error ? e.message : "App failed to start. Try refreshing.";
+  }
+});
