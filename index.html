@@ -16,9 +16,12 @@
     <div class="bg" aria-hidden="true"></div>
 
     <div class="setup-banner" id="setup-banner" hidden>
-      <strong>Supabase not configured.</strong>
-      Edit <code>js/supabase-config.js</code> with your project URL and anon key
-      (Supabase → Project Settings → API), then redeploy.
+      <strong id="setup-banner-title">Supabase not configured.</strong>
+      <span id="setup-banner-body">
+        Edit <code>js/supabase-config.js</code> with your
+        <strong>Supabase</strong> project URL (<code>…supabase.co</code>) and
+        anon key — not your Azure Static Web App URL. Then redeploy.
+      </span>
     </div>
 
     <main class="shell">

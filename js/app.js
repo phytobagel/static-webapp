@@ -8,6 +8,8 @@ const yearEl = document.getElementById("year");
 if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
 const setupBanner = document.getElementById("setup-banner");
+const setupBannerTitle = document.getElementById("setup-banner-title");
+const setupBannerBody = document.getElementById("setup-banner-body");
 const authGate = document.getElementById("auth-gate");
 const appBlock = document.getElementById("app-block");
 const magicForm = document.getElementById("magic-form");
@@ -109,7 +111,20 @@ async function initSupabase() {
     return;
   }
 
-  supabase = createClient(supabaseUrl.trim(), supabaseAnonKey.trim(), {
+  const normalizedUrl = supabaseUrl.trim().replace(/\/+$/, "");
+  const normalizedKey = supabaseAnonKey.trim();
+
+  const check = validateSupabaseConfig(normalizedUrl, normalizedKey);
+  if (!check.ok && check.reason !== "empty") {
+    showSetupMissing({ detail: check.detail });
+    return;
+  }
+  if (!check.ok) {
+    showSetupMissing();
+    return;
+  }
+
+  supabase = createClient(normalizedUrl, normalizedKey, {
     auth: {
       flowType: "pkce",
       persistSession: true,
