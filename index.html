@@ -14,28 +14,91 @@
   </head>
   <body>
     <div class="bg" aria-hidden="true"></div>
+
+    <div class="setup-banner" id="setup-banner" hidden>
+      <strong>Supabase not configured.</strong>
+      Edit <code>js/supabase-config.js</code> with your project URL and anon key
+      (Supabase → Project Settings → API), then redeploy.
+    </div>
+
     <main class="shell">
       <p class="badge">Azure Static Web Apps</p>
       <h1>You’re deployed.</h1>
       <p class="lede">
-        Replace this page with your app. Connect the repo in the Azure portal and
-        push to <code>main</code> to ship updates automatically.
+        Scan QR codes and keep a shared list (Supabase). Sign in with a magic link
+        sent to your email.
       </p>
-      <div class="actions">
-        <button type="button" class="btn btn-primary" id="btn-scan-qr">
-          Scan QR code
-        </button>
+
+      <section class="auth-card" id="auth-gate" hidden>
+        <h2 class="auth-title">Sign in</h2>
+        <p class="auth-hint">
+          We’ll email you a one-time link. Use the same Supabase project for both of
+          you.
+        </p>
+        <form class="auth-form" id="magic-form">
+          <label class="sr-only" for="magic-email">Email</label>
+          <input
+            class="auth-input"
+            type="email"
+            id="magic-email"
+            name="email"
+            autocomplete="email"
+            required
+            placeholder="you@example.com"
+          />
+          <button type="submit" class="btn btn-primary" id="magic-submit">
+            Send magic link
+          </button>
+        </form>
+        <p class="auth-msg" id="magic-msg" role="status"></p>
+      </section>
+
+      <div id="app-block" hidden>
+        <p class="signed-in-bar">
+          <span id="signed-in-email"></span>
+          <button type="button" class="btn btn-ghost btn-small" id="btn-sign-out">
+            Sign out
+          </button>
+        </p>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="btn-scan-qr">
+            Scan QR code
+          </button>
+          <button type="button" class="btn btn-ghost" id="btn-refresh-scans">
+            Refresh list
+          </button>
+        </div>
+
+        <div class="qr-result" id="qr-result" hidden>
+          <p class="qr-result-label">Last scan (saved to shared list)</p>
+          <pre class="qr-result-text" id="qr-result-text"></pre>
+          <button type="button" class="btn btn-ghost btn-small" id="qr-copy">
+            Copy
+          </button>
+        </div>
+
+        <section class="history" aria-labelledby="history-heading">
+          <h2 class="history-heading" id="history-heading">Shared scans</h2>
+          <p class="history-hint" id="history-status"></p>
+          <div class="table-wrap">
+            <table class="scan-table" id="scan-table">
+              <thead>
+                <tr>
+                  <th scope="col">When</th>
+                  <th scope="col">Text</th>
+                </tr>
+              </thead>
+              <tbody id="scan-table-body"></tbody>
+            </table>
+          </div>
+        </section>
       </div>
-      <div class="qr-result" id="qr-result" hidden>
-        <p class="qr-result-label">Scanned text</p>
-        <pre class="qr-result-text" id="qr-result-text"></pre>
-        <button type="button" class="btn btn-ghost btn-small" id="qr-copy">
-          Copy
-        </button>
-      </div>
+
       <ul class="meta">
         <li><span class="label">Config</span> <code>staticwebapp.config.json</code></li>
         <li><span class="label">Workflow</span> <code>.github/workflows/</code></li>
+        <li><span class="label">Backend</span> <code>supabase/schema.sql</code></li>
       </ul>
       <footer class="foot">
         <small>© <span id="year"></span></small>
