@@ -1,11 +1,4 @@
--- Run this in Supabase: SQL Editor → New query → Run.
---
--- After creating the project:
--- 1) Authentication → URL Configuration → Site URL = your live site
---    (e.g. https://your-app.azurestaticapps.net) and add the same under
---    Redirect URLs.
--- 2) Optional hardening: Authentication → Providers → Email → disable
---    "Allow new users" after you and your partner have accounts.
+-- qr_scans + storage_locations (see also supabase/schema.sql)
 
 create table if not exists public.qr_scans (
   id uuid primary key default gen_random_uuid(),
@@ -18,19 +11,20 @@ create index if not exists qr_scans_created_at_idx on public.qr_scans (created_a
 
 alter table public.qr_scans enable row level security;
 
+drop policy if exists "qr_scans_select_authenticated" on public.qr_scans;
 create policy "qr_scans_select_authenticated"
   on public.qr_scans
   for select
   to authenticated
   using (true);
 
+drop policy if exists "qr_scans_insert_authenticated" on public.qr_scans;
 create policy "qr_scans_insert_authenticated"
   on public.qr_scans
   for insert
   to authenticated
   with check (true);
 
--- Storage Location (Supabase Table Editor: public.storage_locations)
 create table if not exists public.storage_locations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -44,12 +38,14 @@ create index if not exists storage_locations_created_at_idx on public.storage_lo
 
 alter table public.storage_locations enable row level security;
 
+drop policy if exists "storage_locations_select_authenticated" on public.storage_locations;
 create policy "storage_locations_select_authenticated"
   on public.storage_locations
   for select
   to authenticated
   using (true);
 
+drop policy if exists "storage_locations_insert_authenticated" on public.storage_locations;
 create policy "storage_locations_insert_authenticated"
   on public.storage_locations
   for insert
