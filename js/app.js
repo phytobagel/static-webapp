@@ -23,6 +23,8 @@ const btnSignOut = document.getElementById("btn-sign-out");
 const btnRefreshScans = document.getElementById("btn-refresh-scans");
 const scanTableBody = document.getElementById("scan-table-body");
 const historyStatus = document.getElementById("history-status");
+const locationSearchInput = document.getElementById("location-search-input");
+const btnSearchLocation = document.getElementById("btn-search-location");
 
 const dialog = document.getElementById("qr-dialog");
 const readerEl = document.getElementById("qr-reader");
@@ -30,12 +32,18 @@ const btnScan = document.getElementById("btn-scan-qr");
 const btnCancel = document.getElementById("qr-cancel");
 const errEl = document.getElementById("qr-dialog-error");
 const resultBox = document.getElementById("qr-result");
-const resultText = document.getElementById("qr-result-text");
+const lookupSaveNote = document.getElementById("lookup-save-note");
+const locationResultFound = document.getElementById("location-result-found");
+const locationNameEl = document.getElementById("location-name");
+const locationCreatedEl = document.getElementById("location-created");
+const locationIdEl = document.getElementById("location-id");
+const locationResultMiss = document.getElementById("location-result-miss");
 const btnCopy = document.getElementById("qr-copy");
 
 let supabase = null;
 let scanner = null;
 let scanning = false;
+let lastLookupCopyText = "";
 
 function validateSupabaseConfig(url, key) {
   if (!url || !key) return { ok: false, reason: "empty" };
@@ -141,7 +149,7 @@ async function refreshScans() {
 
   historyStatus.textContent =
     data.length === 0
-      ? "No scans yet."
+      ? "No lookups yet."
       : `${data.length} entr${data.length === 1 ? "y" : "ies"}`;
 
   scanTableBody.replaceChildren();
@@ -340,6 +348,83 @@ async function saveScan(content) {
   return { ok: true };
 }
 
+function formatLocationForCopy(location) {
+  return [
+    `Name: ${location.name}`,
+    `Added: ${new Date(location.created_at).toLocaleString()}`,
+    `ID: ${location.id}`,
+  ].join("\n");
+}
+
+function showLookupResult(location, code, saved) {
+  if (!resultBox) return;
+  lastLookupCopyText = "";
+
+  if (lookupSaveNote) {
+    if (saved.ok) {
+      lookupSaveNote.hidden = true;
+      lookupSaveNote.textContent = "";
+    } else {
+      lookupSaveNote.hidden = false;
+      lookupSaveNote.textContent = `Not saved to history: ${saved.message}`;
+    }
+  }
+
+  if (location && locationResultFound && locationNameEl && locationCreatedEl && locationIdEl) {
+    locationResultFound.hidden = false;
+    locationNameEl.textContent = location.name;
+    locationCreatedEl.textContent = new Date(location.created_at).toLocaleString();
+    locationIdEl.textContent = location.id;
+    if (locationResultMiss) {
+      locationResultMiss.hidden = true;
+      locationResultMiss.textContent = "";
+    }
+    lastLookupCopyText = formatLocationForCopy(location);
+  } else if (locationResultFound && locationResultMiss) {
+    locationResultFound.hidden = true;
+    locationResultMiss.hidden = false;
+    locationResultMiss.textContent = `No storage location named “${code}”. The scanned or typed text must match a location name exactly.`;
+    lastLookupCopyText = code;
+  }
+
+  resultBox.hidden = false;
+}
+
+async function runLocationLookup(rawCode) {
+  if (!supabase || !resultBox) return;
+  const code = rawCode.trim();
+  if (!code) return;
+
+  const { data, error } = await supabase
+    .from("storage_locations")
+    .select("id, name, created_at")
+    .eq("name", code)
+    .limit(1);
+
+  const saved = await saveScan(code);
+  await refreshScans();
+
+  if (error) {
+    if (lookupSaveNote) {
+      lookupSaveNote.hidden = false;
+      lookupSaveNote.textContent = saved.ok
+        ? error.message
+        : `Lookup failed: ${error.message}. ${saved.message}`;
+    }
+    if (locationResultFound) locationResultFound.hidden = true;
+    if (locationResultMiss) {
+      locationResultMiss.hidden = false;
+      locationResultMiss.textContent = `Could not look up location: ${error.message}`;
+    }
+    lastLookupCopyText = code;
+    resultBox.hidden = false;
+    return;
+  }
+
+  const location = data?.[0] ?? null;
+  showLookupResult(location, code, saved);
+}
+
 async function openScanner() {
   if (!supabase) return;
   const {
@@ -361,17 +446,7 @@ async function openScanner() {
     const onDecode = async (decodedText) => {
       await stopScanner();
       dialog.close();
-      if (resultText && resultBox) {
-        const saved = await saveScan(decodedText);
-        if (saved.ok) {
-          resultText.textContent = decodedText;
-          resultBox.hidden = false;
-          await refreshScans();
-        } else {
-          resultText.textContent = `${decodedText}\n\n— Not saved: ${saved.message}`;
-          resultBox.hidden = false;
-        }
-      }
+      await runLocationLookup(decodedText);
     };
 
     const onFrameError = () => {};
@@ -434,8 +509,20 @@ dialog?.addEventListener("close", () => {
   if (readerEl) readerEl.innerHTML = "";
 });
 
+btnSearchLocation?.addEventListener("click", () => {
+  if (!locationSearchInput) return;
+  void runLocationLookup(locationSearchInput.value);
+});
+
+locationSearchInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    void runLocationLookup(locationSearchInput.value);
+  }
+});
+
 btnCopy?.addEventListener("click", async () => {
-  const text = resultText?.textContent ?? "";
+  const text = lastLookupCopyText;
   if (!text) return;
   const prev = btnCopy.textContent;
   try {
