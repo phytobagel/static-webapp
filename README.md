@@ -35,6 +35,12 @@ That applies SQL under `supabase/migrations/` to your linked project.
 
 Either path creates the app tables, indexes, and row-level security policies expected by the frontend.
 
+### Data model notes
+
+The app stores QR reads in `public.qr_scans`. The **`content`** column is the raw scanned string. Going forward, that value is intended to be the **name of a storage location** (the same identifier you use for locations elsewhere).
+
+`public.storage_locations` holds rows for each location (`name`, timestamps, optional `user_id`). It exists alongside scans; the app does not require a foreign key from `qr_scans` to `storage_locations`. If you later want strict matching (every scan must reference a real location row, or renames should propagate), you can add a `storage_location_id` column and migrate—nothing in this repo enforces that yet.
+
 ### 4. Configure authentication URLs
 
 So magic-link sign-in redirects to your real site:
@@ -67,6 +73,16 @@ Global `npm install -g supabase` is **not supported** by Supabase and will fail.
    npm run supabase -- link --project-ref YOUR_PROJECT_REF
    ```
 
+   The project ref is the subdomain in your Supabase URL (`https://YOUR_PROJECT_REF.supabase.co`). Linking is **per machine / clone**; run `link` again on a new checkout.
+
+3. **Apply migrations** after editing files under `supabase/migrations/`:
+
+   ```bash
+   npm run supabase -- db push
+   ```
+
    Equivalent: `npx supabase <subcommand>` (same binary).
+
+`supabase/config.toml` and `supabase/migrations/` are safe to commit. Generated cache under `supabase/.temp/` is gitignored.
 
 Full command reference: [Supabase CLI](https://supabase.com/docs/reference/cli/introduction). This repo also keeps `supabase/schema.sql` for pasting into the SQL Editor if you prefer not to use migrations.
