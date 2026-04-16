@@ -154,6 +154,35 @@ h1 {
   min-width: 0;
 }
 
+.add-location-form {
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-location-form .add-location-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.add-location-status {
+  margin: 0;
+  width: 100%;
+  font-size: 0.82rem;
+  color: var(--muted);
+  min-height: 1.2em;
+}
+
+.add-location-status.is-error {
+  color: #e8a090;
+}
+
+.add-location-status.is-success {
+  color: #9fcf9a;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

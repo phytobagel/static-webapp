@@ -28,8 +28,9 @@
       <p class="badge">Azure Static Web Apps</p>
       <h1>You’re deployed.</h1>
       <p class="lede">
-        Search storage locations by scanning a QR code (the code matches a location
-        name) or by typing the name. Sign in with a magic link sent to your email.
+        Add storage locations first, then search by scanning a QR code (the code
+        matches a location name) or by typing the name. Sign in with a magic link
+        sent to your email.
       </p>
 
       <section class="auth-card" id="auth-gate">
@@ -87,6 +88,22 @@
             Search
           </button>
         </div>
+        <form class="add-location-form" id="add-location-form" autocomplete="off">
+          <label class="sr-only" for="add-location-input">New location name</label>
+          <input
+            type="text"
+            class="auth-input add-location-input"
+            id="add-location-input"
+            name="location_name"
+            maxlength="500"
+            required
+            placeholder="Create a new storage location"
+          />
+          <button type="submit" class="btn btn-primary" id="add-location-submit">
+            Add location
+          </button>
+          <p class="add-location-status" id="add-location-status" role="status"></p>
+        </form>
 
         <div class="qr-result" id="qr-result" hidden>
           <p class="qr-result-label">Last lookup</p>

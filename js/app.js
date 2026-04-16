@@ -28,6 +28,10 @@ const scanTableBody = document.getElementById("scan-table-body");
 const historyStatus = document.getElementById("history-status");
 const locationSearchInput = document.getElementById("location-search-input");
 const btnSearchLocation = document.getElementById("btn-search-location");
+const addLocationForm = document.getElementById("add-location-form");
+const addLocationInput = document.getElementById("add-location-input");
+const addLocationSubmit = document.getElementById("add-location-submit");
+const addLocationStatus = document.getElementById("add-location-status");
 
 const dialog = document.getElementById("qr-dialog");
 const readerEl = document.getElementById("qr-reader");
@@ -298,6 +302,8 @@ btnSignOut?.addEventListener("click", async () => {
     locationItemsStatus.textContent = "";
     locationItemsStatus.classList.remove("is-error");
   }
+  addLocationForm?.reset();
+  setAddLocationStatus("");
 });
 
 btnRefreshScans?.addEventListener("click", () => {
@@ -338,6 +344,14 @@ function setError(msg) {
     errEl.textContent = "";
     errEl.hidden = true;
   }
+}
+
+function setAddLocationStatus(msg, type = "info") {
+  if (!addLocationStatus) return;
+  addLocationStatus.textContent = msg;
+  addLocationStatus.classList.remove("is-error", "is-success");
+  if (type === "error") addLocationStatus.classList.add("is-error");
+  if (type === "success") addLocationStatus.classList.add("is-success");
 }
 
 async function stopScanner() {
@@ -626,6 +640,61 @@ locationSearchInput?.addEventListener("keydown", (e) => {
     e.preventDefault();
     void runLocationLookup(locationSearchInput.value);
   }
+});
+
+addLocationForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabase || !addLocationInput) return;
+
+  const name = addLocationInput.value.trim();
+  if (!name) return;
+
+  if (addLocationSubmit) addLocationSubmit.disabled = true;
+  setAddLocationStatus("Creating location…");
+
+  const { data: existing, error: existingErr } = await supabase
+    .from("storage_locations")
+    .select("id, name, created_at")
+    .ilike("name", name)
+    .limit(1);
+
+  if (existingErr) {
+    setAddLocationStatus(
+      `Could not check existing locations: ${existingErr.message}`,
+      "error"
+    );
+    if (addLocationSubmit) addLocationSubmit.disabled = false;
+    return;
+  }
+
+  const existingLocation = existing?.[0] ?? null;
+  if (existingLocation) {
+    setAddLocationStatus("That location already exists. Loaded it below.", "success");
+    if (locationSearchInput) locationSearchInput.value = existingLocation.name;
+    showLookupResult(existingLocation, existingLocation.name, { ok: true });
+    addLocationInput.select();
+    if (addLocationSubmit) addLocationSubmit.disabled = false;
+    return;
+  }
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from("storage_locations")
+    .insert({ name })
+    .select("id, name, created_at")
+    .single();
+
+  if (insertErr || !inserted) {
+    setAddLocationStatus(insertErr?.message ?? "Could not create location.", "error");
+    if (addLocationSubmit) addLocationSubmit.disabled = false;
+    return;
+  }
+
+  setAddLocationStatus("Location added. You can add items below.", "success");
+  addLocationForm.reset();
+  if (locationSearchInput) locationSearchInput.value = inserted.name;
+  showLookupResult(inserted, inserted.name, { ok: true });
+  addLocationInput.focus();
+  if (addLocationSubmit) addLocationSubmit.disabled = false;
 });
 
 addItemForm?.addEventListener("submit", async (e) => {
