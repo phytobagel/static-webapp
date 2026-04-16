@@ -103,6 +103,36 @@
                 <dd id="location-id" class="location-id"></dd>
               </div>
             </dl>
+            <div class="location-items" id="location-items" hidden>
+              <h3 class="location-items-heading">Items here</h3>
+              <ul class="item-list" id="location-items-list"></ul>
+              <form class="add-item-form" id="add-item-form" autocomplete="off">
+                <label class="sr-only" for="add-item-name">Item name</label>
+                <input
+                  type="text"
+                  class="auth-input add-item-name"
+                  id="add-item-name"
+                  name="name"
+                  maxlength="500"
+                  required
+                  placeholder="New item name"
+                />
+                <label class="add-item-file-label">
+                  <span class="add-item-file-text">Photo</span>
+                  <input
+                    type="file"
+                    id="add-item-image"
+                    name="image"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    class="add-item-file-input"
+                  />
+                </label>
+                <button type="submit" class="btn btn-primary btn-small" id="add-item-submit">
+                  Add item
+                </button>
+              </form>
+              <p class="location-items-status" id="location-items-status" role="status"></p>
+            </div>
           </div>
           <p class="location-result-miss" id="location-result-miss" hidden></p>
           <button type="button" class="btn btn-ghost btn-small" id="qr-copy">

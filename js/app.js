@@ -6,6 +6,9 @@ const SUPABASE_ESM = [
 const LIB_URL =
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
 
+const ITEM_IMAGE_BUCKET = "item-images";
+const ITEM_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
 const yearEl = document.getElementById("year");
 if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
@@ -39,11 +42,19 @@ const locationCreatedEl = document.getElementById("location-created");
 const locationIdEl = document.getElementById("location-id");
 const locationResultMiss = document.getElementById("location-result-miss");
 const btnCopy = document.getElementById("qr-copy");
+const locationItems = document.getElementById("location-items");
+const locationItemsList = document.getElementById("location-items-list");
+const addItemForm = document.getElementById("add-item-form");
+const addItemName = document.getElementById("add-item-name");
+const addItemImage = document.getElementById("add-item-image");
+const addItemSubmit = document.getElementById("add-item-submit");
+const locationItemsStatus = document.getElementById("location-items-status");
 
 let supabase = null;
 let scanner = null;
 let scanning = false;
 let lastLookupCopyText = "";
+let currentLookupLocationId = null;
 
 function validateSupabaseConfig(url, key) {
   if (!url || !key) return { ok: false, reason: "empty" };
@@ -279,6 +290,14 @@ btnSignOut?.addEventListener("click", async () => {
   magicMsg.textContent = "";
   scanTableBody?.replaceChildren();
   if (historyStatus) historyStatus.textContent = "";
+  currentLookupLocationId = null;
+  if (locationItems) locationItems.hidden = true;
+  if (locationItemsList) locationItemsList.replaceChildren();
+  addItemForm?.reset();
+  if (locationItemsStatus) {
+    locationItemsStatus.textContent = "";
+    locationItemsStatus.classList.remove("is-error");
+  }
 });
 
 btnRefreshScans?.addEventListener("click", () => {
@@ -360,6 +379,14 @@ function showLookupResult(location, code, saved) {
   if (!resultBox) return;
   lastLookupCopyText = "";
 
+  currentLookupLocationId = null;
+  if (locationItems) locationItems.hidden = true;
+  if (locationItemsList) locationItemsList.replaceChildren();
+  if (locationItemsStatus) {
+    locationItemsStatus.textContent = "";
+    locationItemsStatus.classList.remove("is-error");
+  }
+
   if (lookupSaveNote) {
     if (saved.ok) {
       lookupSaveNote.hidden = true;
@@ -380,6 +407,9 @@ function showLookupResult(location, code, saved) {
       locationResultMiss.textContent = "";
     }
     lastLookupCopyText = formatLocationForCopy(location);
+    currentLookupLocationId = location.id;
+    if (locationItems) locationItems.hidden = false;
+    void loadItemsForLocation(location.id);
   } else if (locationResultFound && locationResultMiss) {
     locationResultFound.hidden = true;
     locationResultMiss.hidden = false;
@@ -388,6 +418,80 @@ function showLookupResult(location, code, saved) {
   }
 
   resultBox.hidden = false;
+}
+
+async function loadItemsForLocation(locationId) {
+  if (!supabase || !locationItemsList || !locationId) return;
+  if (locationItemsStatus) {
+    locationItemsStatus.textContent = "Loading items…";
+    locationItemsStatus.classList.remove("is-error");
+  }
+
+  const { data, error } = await supabase
+    .from("items")
+    .select("id, name, image_url, created_at")
+    .eq("storage_location_id", locationId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (locationItemsStatus) {
+      locationItemsStatus.textContent = error.message;
+      locationItemsStatus.classList.add("is-error");
+    }
+    return;
+  }
+
+  if (locationItemsStatus) {
+    locationItemsStatus.textContent = "";
+    locationItemsStatus.classList.remove("is-error");
+  }
+
+  locationItemsList.replaceChildren();
+  if (data.length === 0) {
+    const li = document.createElement("li");
+    li.className = "item-list-empty";
+    li.textContent = "No items yet.";
+    locationItemsList.appendChild(li);
+    return;
+  }
+
+  for (const row of data) {
+    const li = document.createElement("li");
+    li.className = "item-row";
+    const wrap = document.createElement("div");
+    wrap.className = "item-thumb-wrap";
+    if (row.image_url) {
+      const img = document.createElement("img");
+      img.className = "item-thumb";
+      img.src = row.image_url;
+      img.alt = "";
+      wrap.appendChild(img);
+    } else {
+      const ph = document.createElement("div");
+      ph.className = "item-thumb-placeholder";
+      ph.textContent = "—";
+      wrap.appendChild(ph);
+    }
+    const meta = document.createElement("div");
+    meta.className = "item-meta";
+    const nameEl = document.createElement("span");
+    nameEl.className = "item-name";
+    nameEl.textContent = row.name;
+    const dateEl = document.createElement("span");
+    dateEl.className = "item-date";
+    dateEl.textContent = new Date(row.created_at).toLocaleString();
+    meta.append(nameEl, dateEl);
+    li.append(wrap, meta);
+    locationItemsList.appendChild(li);
+  }
+}
+
+function fileExtensionForUpload(file) {
+  const fromName = file.name?.split(".").pop();
+  if (fromName && /^[a-z0-9]+$/i.test(fromName)) return fromName.toLowerCase();
+  const t = file.type?.split("/")[1];
+  if (t && /^[a-z0-9]+$/i.test(t)) return t.toLowerCase();
+  return "jpg";
 }
 
 async function runLocationLookup(rawCode) {
@@ -405,6 +509,9 @@ async function runLocationLookup(rawCode) {
   await refreshScans();
 
   if (error) {
+    currentLookupLocationId = null;
+    if (locationItems) locationItems.hidden = true;
+    if (locationItemsList) locationItemsList.replaceChildren();
     if (lookupSaveNote) {
       lookupSaveNote.hidden = false;
       lookupSaveNote.textContent = saved.ok
@@ -518,6 +625,83 @@ locationSearchInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
     void runLocationLookup(locationSearchInput.value);
+  }
+});
+
+addItemForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabase || !currentLookupLocationId || !addItemName) return;
+  const name = addItemName.value.trim();
+  if (!name) return;
+
+  const file = addItemImage?.files?.[0] ?? null;
+  if (file && file.size > ITEM_IMAGE_MAX_BYTES) {
+    if (locationItemsStatus) {
+      locationItemsStatus.textContent = "Image must be 5 MB or smaller.";
+      locationItemsStatus.classList.add("is-error");
+    }
+    return;
+  }
+
+  if (addItemSubmit) addItemSubmit.disabled = true;
+  if (locationItemsStatus) {
+    locationItemsStatus.textContent = "Saving…";
+    locationItemsStatus.classList.remove("is-error");
+  }
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from("items")
+    .insert({
+      storage_location_id: currentLookupLocationId,
+      name,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !inserted) {
+    if (locationItemsStatus) {
+      locationItemsStatus.textContent = insertErr?.message ?? "Could not add item.";
+      locationItemsStatus.classList.add("is-error");
+    }
+    if (addItemSubmit) addItemSubmit.disabled = false;
+    return;
+  }
+
+  let pendingWarning = null;
+  if (file && file.size > 0) {
+    const ext = fileExtensionForUpload(file);
+    const path = `${inserted.id}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from(ITEM_IMAGE_BUCKET)
+      .upload(path, file, {
+        contentType: file.type || undefined,
+        upsert: true,
+      });
+    if (!upErr) {
+      const { data: pub } = supabase.storage
+        .from(ITEM_IMAGE_BUCKET)
+        .getPublicUrl(path);
+      const imageUrl = pub?.publicUrl ?? null;
+      if (imageUrl) {
+        const { error: updErr } = await supabase
+          .from("items")
+          .update({ image_url: imageUrl })
+          .eq("id", inserted.id);
+        if (updErr) {
+          pendingWarning = `Item saved; image URL not stored: ${updErr.message}`;
+        }
+      }
+    } else {
+      pendingWarning = `Item saved; upload failed: ${upErr.message}`;
+    }
+  }
+
+  addItemForm.reset();
+  if (addItemSubmit) addItemSubmit.disabled = false;
+  await loadItemsForLocation(currentLookupLocationId);
+  if (pendingWarning && locationItemsStatus) {
+    locationItemsStatus.textContent = pendingWarning;
+    locationItemsStatus.classList.add("is-error");
   }
 });
 

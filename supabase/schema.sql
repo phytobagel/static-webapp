@@ -55,3 +55,76 @@ create policy "storage_locations_insert_authenticated"
   for insert
   to authenticated
   with check (true);
+
+-- Item (one storage location per item; many items per location)
+create table if not exists public.items (
+  id uuid primary key default gen_random_uuid(),
+  storage_location_id uuid not null references public.storage_locations (id) on delete cascade,
+  name text not null,
+  image_url text,
+  created_at timestamptz not null default now(),
+  user_id uuid references auth.users (id) on delete set null default auth.uid()
+);
+
+comment on table public.items is 'Item';
+
+comment on column public.items.image_url is 'Public URL of the item image (e.g. from Supabase Storage getPublicUrl).';
+
+create index if not exists items_storage_location_id_idx on public.items (storage_location_id);
+create index if not exists items_created_at_idx on public.items (created_at desc);
+
+alter table public.items enable row level security;
+
+create policy "items_select_authenticated"
+  on public.items
+  for select
+  to authenticated
+  using (true);
+
+create policy "items_insert_authenticated"
+  on public.items
+  for insert
+  to authenticated
+  with check (true);
+
+create policy "items_update_authenticated"
+  on public.items
+  for update
+  to authenticated
+  using (true)
+  with check (true);
+
+create policy "items_delete_authenticated"
+  on public.items
+  for delete
+  to authenticated
+  using (true);
+
+-- Item images (Supabase Storage: bucket item-images; set items.image_url to getPublicUrl after upload)
+insert into storage.buckets (id, name, public)
+values ('item-images', 'item-images', true)
+on conflict (id) do nothing;
+
+create policy "item_images_select"
+  on storage.objects
+  for select
+  using (bucket_id = 'item-images');
+
+create policy "item_images_insert_authenticated"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'item-images');
+
+create policy "item_images_update_authenticated"
+  on storage.objects
+  for update
+  to authenticated
+  using (bucket_id = 'item-images')
+  with check (bucket_id = 'item-images');
+
+create policy "item_images_delete_authenticated"
+  on storage.objects
+  for delete
+  to authenticated
+  using (bucket_id = 'item-images');
