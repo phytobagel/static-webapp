@@ -1,0 +1,27 @@
+---
+description: Keep docs current—document meaningfully and verify comments/JSDoc after edits
+alwaysApply: true
+---
+
+# Documentation and doc accuracy
+
+## When writing or changing code
+
+- Add or update documentation where it helps the next reader: **public APIs**, **non-obvious behavior**, **invariants**, **data shapes**, and **integration points** (env vars, external services, URLs).
+- Prefer **brief, accurate** JSDoc or file-level notes over restating the obvious. If the code is self-explanatory, a short “why” comment beats a long “what.”
+- When you touch a function, module, or section, treat **nearby comments and JSDoc** as part of the same change set.
+
+## After every substantive code change (before finishing)
+
+Run a quick **documentation audit** for the files you edited:
+
+1. **Stale comments** — Remove or rewrite comments that describe old behavior, removed parameters, or wrong types.
+2. **Mismatched JSDoc** — Align `@param`, `@returns`, and type annotations with the actual signature and return paths (including early returns and errors).
+3. **Orphan docs** — Delete documentation for deleted exports; add docs for new public exports if they are part of the module’s contract.
+4. **Examples and README snippets** — If behavior or CLI/usage changed, update any referenced examples in the same PR-style batch of edits.
+
+If you find contradictions between code and docs, **fix the docs or the code** so they agree; do not leave known drift.
+
+## Quick self-check
+
+Ask: “Would someone reading only the comments/JSDoc next to this code be misled?” If yes, update before considering the task done.

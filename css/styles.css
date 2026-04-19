@@ -8,8 +8,10 @@
 html {
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
   max-width: 100%;
+  max-width: 100vw;
   min-height: 100%;
   min-height: 100dvh;
   overscroll-behavior-x: none;
@@ -19,8 +21,11 @@ html {
 body {
   margin: 0;
   overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
   max-width: 100%;
+  max-width: 100vw;
+  min-width: 0;
   min-height: 100%;
   min-height: 100dvh;
   position: relative;
@@ -36,9 +41,9 @@ body {
 main,
 #app-block,
 .app-panel {
+  width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: hidden;
 }
 
 code,
@@ -200,6 +205,7 @@ input[type="email"] {
   z-index: 1000;
   width: 100%;
   max-width: 100%;
+  max-width: 100vw;
   margin: 0;
   box-sizing: border-box;
   display: grid;
@@ -214,7 +220,6 @@ input[type="email"] {
   box-shadow:
     0 -4px 0 rgba(255, 255, 255, 0.7) inset,
     0 -8px 28px rgba(15, 23, 42, 0.12);
-  overflow-x: hidden;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
