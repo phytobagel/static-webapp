@@ -5,6 +5,11 @@
   box-sizing: border-box;
 }
 
+/* Ensure semantic hidden state always wins over layout rules. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   /* Lock to viewport: min-height allows the page to grow and scroll; use fixed height instead. */

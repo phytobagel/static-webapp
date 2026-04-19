@@ -107,6 +107,7 @@ function showAuthGate() {
   setupBanner?.setAttribute("hidden", "");
   authGate?.removeAttribute("hidden");
   appBlock?.setAttribute("hidden", "");
+  appTabBar?.setAttribute("hidden", "");
 }
 
 function showApp(session) {

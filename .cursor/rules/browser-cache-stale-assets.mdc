@@ -1,0 +1,28 @@
+---
+description: Remind about browser cache when static assets or “changes not showing” suggest stale files
+alwaysApply: true
+---
+
+# Browser cache and stale static assets
+
+## When to remind the user
+
+After changing **HTML, CSS, or JS** (or when debugging layout, mobile Safari/Chrome, or “the fix didn’t work”), **stale cache** is common—especially on **phones** and with **hosted static** deploys.
+
+If symptoms match any of these, **briefly remind the user** to verify a fresh load before deeper debugging:
+
+- Old styles or behavior after a deploy or local save
+- Horizontal/vertical scroll or layout fixes that “should” be in the stylesheet but don’t match what they see
+- Only reproduces on one device or browser profile
+
+## What to suggest (short checklist)
+
+1. **Hard refresh** on desktop, or **close the tab** and reopen the URL on mobile.
+2. **Clear site data** for the origin (Settings → Site settings / clear cache) if a hard refresh isn’t enough.
+3. **Private/incognito** window to confirm it’s cache vs. code.
+4. When iterating locally, prefer **disable cache** in devtools (desktop) while the panel is open.
+
+## For the agent
+
+- Do not assume the user’s browser has the latest `css/styles.css` or `js/app.js` until they’ve tried a fresh load.
+- When proposing “still broken?” next steps, **include cache clearing** alongside code checks.
