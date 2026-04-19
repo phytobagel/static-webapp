@@ -61,6 +61,8 @@ const btnLocationViewerClose = document.getElementById("location-viewer-close");
 let supabase = null;
 let scanner = null;
 let scanning = false;
+const LOCAL_BYPASS_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const IS_LOCALHOST = LOCAL_BYPASS_HOSTS.has(window.location.hostname);
 
 function validateSupabaseConfig(url, key) {
   if (!url || !key) return { ok: false, reason: "empty" };
@@ -119,8 +121,8 @@ function showApp(session) {
   appBlock?.removeAttribute("hidden");
   appTabBar?.removeAttribute("hidden");
   setActiveTab("scanner");
-  if (signedInEmail && session?.user?.email) {
-    signedInEmail.textContent = session.user.email;
+  if (signedInEmail) {
+    signedInEmail.textContent = session?.user?.email ?? "";
   }
 }
 
@@ -197,10 +199,21 @@ async function refreshScans() {
 }
 
 function applySession(session) {
+  if (!session && IS_LOCALHOST) {
+    // Localhost is treated as a trusted development environment.
+    showApp({ user: { email: "Local development mode" } });
+    if (btnSignOut) btnSignOut.hidden = true;
+    void refreshScans();
+    void refreshLocationViewer();
+    return;
+  }
+
   if (!session) {
+    if (btnSignOut) btnSignOut.hidden = false;
     showAuthGate();
     return;
   }
+  if (btnSignOut) btnSignOut.hidden = false;
   showApp(session);
   void refreshScans();
   void refreshLocationViewer();
@@ -306,6 +319,7 @@ magicForm?.addEventListener("submit", async (e) => {
 });
 
 btnSignOut?.addEventListener("click", async () => {
+  if (IS_LOCALHOST) return;
   if (!supabase) return;
   await supabase.auth.signOut();
   magicMsg.textContent = "";
@@ -561,10 +575,12 @@ async function runLocationLookup(rawCode) {
 
 async function openScanner() {
   if (!supabase) return;
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return;
+  if (!IS_LOCALHOST) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+  }
 
   setError("");
   if (!dialog || !readerEl) return;
