@@ -66,22 +66,25 @@
           aria-labelledby="tab-viewer"
           hidden
         >
-          <h2>Location Viewer</h2>
-          <form id="add-location-form" autocomplete="off">
-            <label class="sr-only" for="add-location-input">New location name</label>
-            <input
-              type="text"
-              id="add-location-input"
-              name="location_name"
-              maxlength="500"
-              required
-              placeholder="Create a new storage location"
-            />
-            <button type="submit" id="add-location-submit">Add location</button>
-            <p id="add-location-status" role="status"></p>
-          </form>
+          <div class="location-viewer-heading">
+            <h2>Location Viewer</h2>
+            <button
+              type="button"
+              id="btn-open-add-location"
+              class="btn-discreet-add"
+              aria-label="Add location"
+              title="Add location"
+            >
+              +
+            </button>
+          </div>
           <p id="location-viewer-status" role="status"></p>
-          <ul id="location-viewer-list"></ul>
+          <div
+            class="location-viewer-list-region"
+            aria-label="Storage locations"
+          >
+            <ul id="location-viewer-list"></ul>
+          </div>
         </section>
 
         <section
@@ -164,7 +167,27 @@
       <p id="location-viewer-dialog-status" role="status"></p>
       <p>
         <button type="button" id="location-viewer-close">Close</button>
-asdf      </p>
+      </p>
+    </dialog>
+
+    <dialog id="add-location-dialog" aria-labelledby="add-location-dialog-title">
+      <h2 id="add-location-dialog-title">Add location</h2>
+      <form id="add-location-form" autocomplete="off">
+        <label for="add-location-input">Storage location name</label>
+        <input
+          type="text"
+          id="add-location-input"
+          name="location_name"
+          maxlength="500"
+          required
+          placeholder="e.g. Shelf A3"
+        />
+        <p id="add-location-status" role="status"></p>
+        <p class="add-location-actions">
+          <button type="button" id="add-location-cancel">Cancel</button>
+          <button type="submit" id="add-location-submit">Add</button>
+        </p>
+      </form>
     </dialog>
 
     <script src="js/app.js" type="module"></script>

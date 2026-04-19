@@ -25,9 +25,12 @@ const btnRefreshScans = document.getElementById("btn-refresh-scans");
 const scanTableBody = document.getElementById("scan-table-body");
 const historyStatus = document.getElementById("history-status");
 const scannerStatus = document.getElementById("scanner-status");
+const btnOpenAddLocation = document.getElementById("btn-open-add-location");
+const addLocationDialog = document.getElementById("add-location-dialog");
 const addLocationForm = document.getElementById("add-location-form");
 const addLocationInput = document.getElementById("add-location-input");
 const addLocationSubmit = document.getElementById("add-location-submit");
+const addLocationCancel = document.getElementById("add-location-cancel");
 const addLocationStatus = document.getElementById("add-location-status");
 const locationViewerStatus = document.getElementById("location-viewer-status");
 const locationViewerList = document.getElementById("location-viewer-list");
@@ -313,6 +316,7 @@ btnSignOut?.addEventListener("click", async () => {
   if (scannerStatus) scannerStatus.textContent = "";
   addLocationForm?.reset();
   setAddLocationStatus("");
+  addLocationDialog?.close();
   locationViewerDialog?.close();
 });
 
@@ -478,7 +482,7 @@ function renderLocationViewerList(locations) {
 
   if (locations.length === 0) {
     const li = document.createElement("li");
-    li.textContent = "No locations yet.";
+    li.textContent = "No locations yet. Tap + to add one.";
     locationViewerList.appendChild(li);
     return;
   }
@@ -509,7 +513,7 @@ async function refreshLocationViewer() {
     renderLocationViewerList(locations);
     locationViewerStatus.textContent =
       locations.length === 0
-        ? "Add a location to get started."
+        ? "No locations yet. Use + to add one."
         : `${locations.length} location${locations.length === 1 ? "" : "s"}.`;
   } catch (error) {
     locationViewerStatus.textContent =
@@ -646,6 +650,26 @@ appTabBar?.addEventListener("click", (e) => {
   if (tabId) setActiveTab(tabId);
 });
 
+function openAddLocationModal() {
+  setAddLocationStatus("");
+  addLocationForm?.reset();
+  addLocationDialog?.showModal();
+  queueMicrotask(() => addLocationInput?.focus());
+}
+
+btnOpenAddLocation?.addEventListener("click", () => {
+  openAddLocationModal();
+});
+
+addLocationCancel?.addEventListener("click", () => {
+  addLocationDialog?.close();
+});
+
+addLocationDialog?.addEventListener("close", () => {
+  addLocationForm?.reset();
+  if (addLocationSubmit) addLocationSubmit.disabled = false;
+});
+
 addLocationForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!supabase || !addLocationInput) return;
@@ -673,10 +697,10 @@ addLocationForm?.addEventListener("submit", async (e) => {
   const existingLocation = existing?.[0] ?? null;
   if (existingLocation) {
     setAddLocationStatus("That location already exists.");
+    addLocationDialog?.close();
     await refreshLocationViewer();
     setActiveTab("viewer");
     await openLocationViewerModal(existingLocation);
-    addLocationInput.select();
     if (addLocationSubmit) addLocationSubmit.disabled = false;
     return;
   }
@@ -695,10 +719,10 @@ addLocationForm?.addEventListener("submit", async (e) => {
 
   setAddLocationStatus("Location added.");
   addLocationForm.reset();
+  addLocationDialog?.close();
   await refreshLocationViewer();
   setActiveTab("viewer");
   await openLocationViewerModal(inserted);
-  addLocationInput.focus();
   if (addLocationSubmit) addLocationSubmit.disabled = false;
 });
 
