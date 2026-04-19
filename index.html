@@ -2,20 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Azure Static Web App</title>
     <link rel="stylesheet" href="css/styles.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
   </head>
   <body>
-    <div class="bg" aria-hidden="true"></div>
-
-    <div class="setup-banner" id="setup-banner" hidden>
+    <div id="setup-banner" hidden>
       <strong id="setup-banner-title">Supabase not configured.</strong>
       <span id="setup-banner-body">
         Edit <code>js/supabase-config.js</code> with your
@@ -24,25 +19,24 @@
       </span>
     </div>
 
-    <main class="shell">
-      <p class="badge">Azure Static Web Apps</p>
+    <main>
+      <p>Azure Static Web Apps</p>
       <h1>You’re deployed.</h1>
-      <p class="lede">
+      <p>
         Add storage locations first, then search by scanning a QR code (the code
         matches a location name) or by typing the name. Sign in with a magic link
         sent to your email.
       </p>
 
-      <section class="auth-card" id="auth-gate">
-        <h2 class="auth-title">Sign in</h2>
-        <p class="auth-hint">
+      <section id="auth-gate">
+        <h2>Sign in</h2>
+        <p>
           We’ll email you a one-time link. Use the same Supabase project for both of
           you.
         </p>
-        <form class="auth-form" id="magic-form">
+        <form id="magic-form">
           <label class="sr-only" for="magic-email">Email</label>
           <input
-            class="auth-input"
             type="email"
             id="magic-email"
             name="email"
@@ -50,118 +44,98 @@
             required
             placeholder="you@example.com"
           />
-          <button type="submit" class="btn btn-primary" id="magic-submit">
-            Send magic link
-          </button>
+          <button type="submit" id="magic-submit">Send magic link</button>
         </form>
-        <p class="auth-msg" id="magic-msg" role="status"></p>
+        <p id="magic-msg" role="status"></p>
       </section>
 
       <div id="app-block" hidden>
-        <p class="signed-in-bar">
+        <p>
           <span id="signed-in-email"></span>
-          <button type="button" class="btn btn-ghost btn-small" id="btn-sign-out">
-            Sign out
-          </button>
+          <button type="button" id="btn-sign-out">Sign out</button>
         </p>
 
-        <div class="actions">
-          <button type="button" class="btn btn-primary" id="btn-scan-qr">
-            Scan location QR
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-refresh-scans">
-            Refresh history
-          </button>
-        </div>
+        <p>
+          <button type="button" id="btn-scan-qr">Scan location QR</button>
+          <button type="button" id="btn-refresh-scans">Refresh history</button>
+        </p>
 
-        <div class="search-row">
+        <p>
           <label class="sr-only" for="location-search-input">Location name</label>
           <input
             type="text"
-            class="auth-input search-input"
             id="location-search-input"
             name="location"
             autocomplete="off"
             placeholder="Or type a location name"
           />
-          <button type="button" class="btn btn-ghost" id="btn-search-location">
-            Search
-          </button>
-        </div>
-        <form class="add-location-form" id="add-location-form" autocomplete="off">
+          <button type="button" id="btn-search-location">Search</button>
+        </p>
+        <form id="add-location-form" autocomplete="off">
           <label class="sr-only" for="add-location-input">New location name</label>
           <input
             type="text"
-            class="auth-input add-location-input"
             id="add-location-input"
             name="location_name"
             maxlength="500"
             required
             placeholder="Create a new storage location"
           />
-          <button type="submit" class="btn btn-primary" id="add-location-submit">
-            Add location
-          </button>
-          <p class="add-location-status" id="add-location-status" role="status"></p>
+          <button type="submit" id="add-location-submit">Add location</button>
+          <p id="add-location-status" role="status"></p>
         </form>
 
-        <div class="qr-result" id="qr-result" hidden>
-          <p class="qr-result-label">Last lookup</p>
-          <p class="lookup-save-note" id="lookup-save-note" hidden></p>
-          <div class="location-result-found" id="location-result-found" hidden>
-            <h3 class="location-name" id="location-name"></h3>
-            <dl class="location-details">
-              <div class="location-detail-row">
+        <div id="qr-result" hidden>
+          <p>Last lookup</p>
+          <p id="lookup-save-note" hidden></p>
+          <div id="location-result-found" hidden>
+            <h3 id="location-name"></h3>
+            <dl>
+              <div>
                 <dt>Added</dt>
                 <dd id="location-created"></dd>
               </div>
-              <div class="location-detail-row">
+              <div>
                 <dt>ID</dt>
-                <dd id="location-id" class="location-id"></dd>
+                <dd id="location-id"></dd>
               </div>
             </dl>
-            <div class="location-items" id="location-items" hidden>
-              <h3 class="location-items-heading">Items here</h3>
-              <ul class="item-list" id="location-items-list"></ul>
-              <form class="add-item-form" id="add-item-form" autocomplete="off">
+            <div id="location-items" hidden>
+              <h3>Items here</h3>
+              <ul id="location-items-list"></ul>
+              <form id="add-item-form" autocomplete="off">
                 <label class="sr-only" for="add-item-name">Item name</label>
                 <input
                   type="text"
-                  class="auth-input add-item-name"
                   id="add-item-name"
                   name="name"
                   maxlength="500"
                   required
                   placeholder="New item name"
                 />
-                <label class="add-item-file-label">
-                  <span class="add-item-file-text">Photo</span>
+                <label>
+                  Photo
                   <input
                     type="file"
                     id="add-item-image"
                     name="image"
                     accept="image/jpeg,image/png,image/webp,image/gif"
-                    class="add-item-file-input"
                   />
                 </label>
-                <button type="submit" class="btn btn-primary btn-small" id="add-item-submit">
-                  Add item
-                </button>
+                <button type="submit" id="add-item-submit">Add item</button>
               </form>
-              <p class="location-items-status" id="location-items-status" role="status"></p>
+              <p id="location-items-status" role="status"></p>
             </div>
           </div>
-          <p class="location-result-miss" id="location-result-miss" hidden></p>
-          <button type="button" class="btn btn-ghost btn-small" id="qr-copy">
-            Copy details
-          </button>
+          <p id="location-result-miss" hidden></p>
+          <button type="button" id="qr-copy">Copy details</button>
         </div>
 
-        <section class="history" aria-labelledby="history-heading">
-          <h2 class="history-heading" id="history-heading">Lookup history</h2>
-          <p class="history-hint" id="history-status"></p>
-          <div class="table-wrap">
-            <table class="scan-table" id="scan-table">
+        <section aria-labelledby="history-heading">
+          <h2 id="history-heading">Lookup history</h2>
+          <p id="history-status"></p>
+          <div id="scan-table-wrap">
+            <table id="scan-table">
               <thead>
                 <tr>
                   <th scope="col">When</th>
@@ -174,29 +148,33 @@
         </section>
       </div>
 
-      <ul class="meta">
-        <li><span class="label">Config</span> <code>staticwebapp.config.json</code></li>
-        <li><span class="label">Workflow</span> <code>.github/workflows/</code></li>
-        <li><span class="label">Backend</span> <code>supabase/schema.sql</code></li>
+      <ul>
+        <li>
+          Config <code>staticwebapp.config.json</code>
+        </li>
+        <li>
+          Workflow <code>.github/workflows/</code>
+        </li>
+        <li>
+          Backend <code>supabase/schema.sql</code>
+        </li>
       </ul>
-      <footer class="foot">
+      <footer>
         <small>© <span id="year"></span></small>
       </footer>
     </main>
 
-    <dialog id="qr-dialog" class="qr-dialog" aria-labelledby="qr-dialog-title">
-      <div class="qr-dialog-panel">
-        <h2 id="qr-dialog-title" class="qr-dialog-title">Scan location QR</h2>
-        <p class="qr-dialog-hint">
-          Allow camera access when prompted. The QR code text must match a storage
-          location name exactly.
-        </p>
-        <div id="qr-reader" class="qr-reader"></div>
-        <p class="qr-dialog-error" id="qr-dialog-error" hidden></p>
-        <div class="qr-dialog-actions">
-          <button type="button" class="btn btn-ghost" id="qr-cancel">Cancel</button>
-        </div>
-      </div>
+    <dialog id="qr-dialog" aria-labelledby="qr-dialog-title">
+      <h2 id="qr-dialog-title">Scan location QR</h2>
+      <p>
+        Allow camera access when prompted. The QR code text must match a storage
+        location name exactly.
+      </p>
+      <div id="qr-reader"></div>
+      <p id="qr-dialog-error" hidden></p>
+      <p>
+        <button type="button" id="qr-cancel">Cancel</button>
+      </p>
     </dialog>
 
     <script src="js/app.js" type="module"></script>

@@ -4,5 +4,8 @@
   },
   "devDependencies": {
     "supabase": "^2.84.10"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
   }
 }

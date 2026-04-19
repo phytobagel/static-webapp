@@ -171,10 +171,8 @@ async function refreshScans() {
   for (const row of data) {
     const tr = document.createElement("tr");
     const tdWhen = document.createElement("td");
-    tdWhen.className = "scan-table-date";
     tdWhen.textContent = new Date(row.created_at).toLocaleString();
     const tdText = document.createElement("td");
-    tdText.className = "scan-table-content";
     tdText.textContent = row.content;
     tr.append(tdWhen, tdText);
     scanTableBody.appendChild(tr);
@@ -300,7 +298,6 @@ btnSignOut?.addEventListener("click", async () => {
   addItemForm?.reset();
   if (locationItemsStatus) {
     locationItemsStatus.textContent = "";
-    locationItemsStatus.classList.remove("is-error");
   }
   addLocationForm?.reset();
   setAddLocationStatus("");
@@ -346,12 +343,9 @@ function setError(msg) {
   }
 }
 
-function setAddLocationStatus(msg, type = "info") {
+function setAddLocationStatus(msg) {
   if (!addLocationStatus) return;
   addLocationStatus.textContent = msg;
-  addLocationStatus.classList.remove("is-error", "is-success");
-  if (type === "error") addLocationStatus.classList.add("is-error");
-  if (type === "success") addLocationStatus.classList.add("is-success");
 }
 
 async function stopScanner() {
@@ -398,7 +392,6 @@ function showLookupResult(location, code, saved) {
   if (locationItemsList) locationItemsList.replaceChildren();
   if (locationItemsStatus) {
     locationItemsStatus.textContent = "";
-    locationItemsStatus.classList.remove("is-error");
   }
 
   if (lookupSaveNote) {
@@ -438,7 +431,6 @@ async function loadItemsForLocation(locationId) {
   if (!supabase || !locationItemsList || !locationId) return;
   if (locationItemsStatus) {
     locationItemsStatus.textContent = "Loading items…";
-    locationItemsStatus.classList.remove("is-error");
   }
 
   const { data, error } = await supabase
@@ -450,20 +442,17 @@ async function loadItemsForLocation(locationId) {
   if (error) {
     if (locationItemsStatus) {
       locationItemsStatus.textContent = error.message;
-      locationItemsStatus.classList.add("is-error");
     }
     return;
   }
 
   if (locationItemsStatus) {
     locationItemsStatus.textContent = "";
-    locationItemsStatus.classList.remove("is-error");
   }
 
   locationItemsList.replaceChildren();
   if (data.length === 0) {
     const li = document.createElement("li");
-    li.className = "item-list-empty";
     li.textContent = "No items yet.";
     locationItemsList.appendChild(li);
     return;
@@ -471,28 +460,21 @@ async function loadItemsForLocation(locationId) {
 
   for (const row of data) {
     const li = document.createElement("li");
-    li.className = "item-row";
     const wrap = document.createElement("div");
-    wrap.className = "item-thumb-wrap";
     if (row.image_url) {
       const img = document.createElement("img");
-      img.className = "item-thumb";
       img.src = row.image_url;
       img.alt = "";
       wrap.appendChild(img);
     } else {
       const ph = document.createElement("div");
-      ph.className = "item-thumb-placeholder";
       ph.textContent = "—";
       wrap.appendChild(ph);
     }
     const meta = document.createElement("div");
-    meta.className = "item-meta";
     const nameEl = document.createElement("span");
-    nameEl.className = "item-name";
     nameEl.textContent = row.name;
     const dateEl = document.createElement("span");
-    dateEl.className = "item-date";
     dateEl.textContent = new Date(row.created_at).toLocaleString();
     meta.append(nameEl, dateEl);
     li.append(wrap, meta);
@@ -660,8 +642,7 @@ addLocationForm?.addEventListener("submit", async (e) => {
 
   if (existingErr) {
     setAddLocationStatus(
-      `Could not check existing locations: ${existingErr.message}`,
-      "error"
+      `Could not check existing locations: ${existingErr.message}`
     );
     if (addLocationSubmit) addLocationSubmit.disabled = false;
     return;
@@ -669,7 +650,7 @@ addLocationForm?.addEventListener("submit", async (e) => {
 
   const existingLocation = existing?.[0] ?? null;
   if (existingLocation) {
-    setAddLocationStatus("That location already exists. Loaded it below.", "success");
+    setAddLocationStatus("That location already exists. Loaded it below.");
     if (locationSearchInput) locationSearchInput.value = existingLocation.name;
     showLookupResult(existingLocation, existingLocation.name, { ok: true });
     addLocationInput.select();
@@ -684,12 +665,12 @@ addLocationForm?.addEventListener("submit", async (e) => {
     .single();
 
   if (insertErr || !inserted) {
-    setAddLocationStatus(insertErr?.message ?? "Could not create location.", "error");
+    setAddLocationStatus(insertErr?.message ?? "Could not create location.");
     if (addLocationSubmit) addLocationSubmit.disabled = false;
     return;
   }
 
-  setAddLocationStatus("Location added. You can add items below.", "success");
+  setAddLocationStatus("Location added. You can add items below.");
   addLocationForm.reset();
   if (locationSearchInput) locationSearchInput.value = inserted.name;
   showLookupResult(inserted, inserted.name, { ok: true });
@@ -707,7 +688,6 @@ addItemForm?.addEventListener("submit", async (e) => {
   if (file && file.size > ITEM_IMAGE_MAX_BYTES) {
     if (locationItemsStatus) {
       locationItemsStatus.textContent = "Image must be 5 MB or smaller.";
-      locationItemsStatus.classList.add("is-error");
     }
     return;
   }
@@ -715,7 +695,6 @@ addItemForm?.addEventListener("submit", async (e) => {
   if (addItemSubmit) addItemSubmit.disabled = true;
   if (locationItemsStatus) {
     locationItemsStatus.textContent = "Saving…";
-    locationItemsStatus.classList.remove("is-error");
   }
 
   const { data: inserted, error: insertErr } = await supabase
@@ -730,7 +709,6 @@ addItemForm?.addEventListener("submit", async (e) => {
   if (insertErr || !inserted) {
     if (locationItemsStatus) {
       locationItemsStatus.textContent = insertErr?.message ?? "Could not add item.";
-      locationItemsStatus.classList.add("is-error");
     }
     if (addItemSubmit) addItemSubmit.disabled = false;
     return;
@@ -770,7 +748,6 @@ addItemForm?.addEventListener("submit", async (e) => {
   await loadItemsForLocation(currentLookupLocationId);
   if (pendingWarning && locationItemsStatus) {
     locationItemsStatus.textContent = pendingWarning;
-    locationItemsStatus.classList.add("is-error");
   }
 });
 
