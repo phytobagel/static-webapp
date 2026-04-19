@@ -57,12 +57,72 @@ const locationViewerDialogStatus = document.getElementById(
   "location-viewer-dialog-status"
 );
 const btnLocationViewerClose = document.getElementById("location-viewer-close");
+const photoViewerDialog = document.getElementById("photo-viewer-dialog");
+const photoViewerCaption = document.getElementById("photo-viewer-caption");
+const photoViewerImage = document.getElementById("photo-viewer-image");
+const btnPhotoViewerClose = document.getElementById("photo-viewer-close");
+const itemDeleteDialog = document.getElementById("item-delete-dialog");
+const itemDeleteDialogMessage = document.getElementById("item-delete-dialog-message");
+const btnItemDeleteCancel = document.getElementById("item-delete-cancel");
+const btnItemDeleteConfirm = document.getElementById("item-delete-confirm");
+const itemPhotoInput = document.getElementById("item-photo-input");
 
 let supabase = null;
 let scanner = null;
 let scanning = false;
+let activeViewerLocation = null;
+let pendingPhotoTarget = null;
+let pendingDeleteTarget = null;
 const LOCAL_BYPASS_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const IS_LOCALHOST = LOCAL_BYPASS_HOSTS.has(window.location.hostname);
+
+function toSafeFileName(value) {
+  return value.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+async function updateItemPhoto(item, file) {
+  if (!supabase || !activeViewerLocation) {
+    throw new Error("Photo upload unavailable right now.");
+  }
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please choose an image file.");
+  }
+  const ext = file.name.includes(".")
+    ? file.name.slice(file.name.lastIndexOf("."))
+    : ".jpg";
+  const filePath = `${activeViewerLocation.id}/${item.id}-${Date.now()}-${toSafeFileName(
+    item.name
+  )}${ext}`;
+
+  const bucket = supabase.storage.from("item-images");
+  const { error: uploadError } = await bucket.upload(filePath, file, {
+    upsert: true,
+    cacheControl: "3600",
+  });
+  if (uploadError) throw uploadError;
+
+  const {
+    data: { publicUrl },
+  } = bucket.getPublicUrl(filePath);
+  const { error: updateError } = await supabase
+    .from("items")
+    .update({ image_url: publicUrl })
+    .eq("id", item.id);
+  if (updateError) throw updateError;
+}
+
+async function deleteItem(itemId) {
+  if (!supabase) throw new Error("Delete unavailable right now.");
+  const { error } = await supabase.from("items").delete().eq("id", itemId);
+  if (error) throw error;
+}
+
+function openItemDeleteModal(item) {
+  if (!itemDeleteDialog || !itemDeleteDialogMessage) return;
+  pendingDeleteTarget = item;
+  itemDeleteDialogMessage.textContent = `Are you sure you want to delete "${item.name}"?`;
+  itemDeleteDialog.showModal();
+}
 
 function validateSupabaseConfig(url, key) {
   if (!url || !key) return { ok: false, reason: "empty" };
@@ -448,9 +508,10 @@ async function openLocationViewerModal(location) {
   locationViewerDialogMeta.textContent = `Added ${new Date(
     location.created_at
   ).toLocaleString()}`;
+  activeViewerLocation = location;
   locationViewerDialogStatus.textContent = "Loading items...";
   locationViewerDialogItems.replaceChildren();
-  locationViewerDialog.showModal();
+  if (!locationViewerDialog.open) locationViewerDialog.showModal();
 
   try {
     const items = await fetchItemsForLocation(location.id);
@@ -473,14 +534,41 @@ async function openLocationViewerModal(location) {
       details.append(nameEl, dateEl);
       li.append(details);
 
+      const actions = document.createElement("div");
+      actions.className = "viewer-item-actions";
+
       if (item.image_url) {
-        const imageLink = document.createElement("a");
-        imageLink.href = item.image_url;
-        imageLink.target = "_blank";
-        imageLink.rel = "noopener noreferrer";
-        imageLink.textContent = "Photo";
-        li.append(imageLink);
+        const imageButton = document.createElement("button");
+        imageButton.type = "button";
+        imageButton.className = "viewer-item-photo";
+        imageButton.textContent = "Photo";
+        imageButton.addEventListener("click", () => {
+          openPhotoViewerModal(item.image_url, item.name);
+        });
+        actions.append(imageButton);
       }
+
+      const changePhotoButton = document.createElement("button");
+      changePhotoButton.type = "button";
+      changePhotoButton.className = "viewer-item-photo";
+      changePhotoButton.textContent = item.image_url ? "Change Photo" : "Add Photo";
+      changePhotoButton.addEventListener("click", () => {
+        if (!itemPhotoInput) return;
+        pendingPhotoTarget = item;
+        itemPhotoInput.value = "";
+        itemPhotoInput.click();
+      });
+      actions.append(changePhotoButton);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "viewer-item-delete";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => {
+        openItemDeleteModal(item);
+      });
+      actions.append(deleteButton);
+      li.append(actions);
 
       locationViewerDialogItems.appendChild(li);
     }
@@ -488,6 +576,14 @@ async function openLocationViewerModal(location) {
     locationViewerDialogStatus.textContent =
       error instanceof Error ? error.message : "Could not load items.";
   }
+}
+
+function openPhotoViewerModal(imageUrl, itemName) {
+  if (!photoViewerDialog || !photoViewerImage || !photoViewerCaption) return;
+  photoViewerCaption.textContent = itemName;
+  photoViewerImage.src = imageUrl;
+  photoViewerImage.alt = `Photo for ${itemName}`;
+  photoViewerDialog.showModal();
 }
 
 function renderLocationViewerList(locations) {
@@ -747,8 +843,70 @@ btnLocationViewerClose?.addEventListener("click", () => {
 });
 
 locationViewerDialog?.addEventListener("close", () => {
+  photoViewerDialog?.close();
+  itemDeleteDialog?.close();
+  activeViewerLocation = null;
+  pendingPhotoTarget = null;
+  pendingDeleteTarget = null;
   if (locationViewerDialogItems) locationViewerDialogItems.replaceChildren();
   if (locationViewerDialogStatus) locationViewerDialogStatus.textContent = "";
+});
+
+btnPhotoViewerClose?.addEventListener("click", () => {
+  photoViewerDialog?.close();
+});
+
+photoViewerDialog?.addEventListener("close", () => {
+  if (photoViewerImage) {
+    photoViewerImage.removeAttribute("src");
+    photoViewerImage.alt = "";
+  }
+  if (photoViewerCaption) photoViewerCaption.textContent = "";
+});
+
+itemPhotoInput?.addEventListener("change", async () => {
+  const file = itemPhotoInput.files?.[0] ?? null;
+  const item = pendingPhotoTarget;
+  pendingPhotoTarget = null;
+  itemPhotoInput.value = "";
+  if (!file || !item || !activeViewerLocation || !locationViewerDialogStatus) return;
+
+  locationViewerDialogStatus.textContent = `Uploading photo for ${item.name}...`;
+  try {
+    await updateItemPhoto(item, file);
+    locationViewerDialogStatus.textContent = "Photo updated.";
+    await openLocationViewerModal(activeViewerLocation);
+  } catch (error) {
+    locationViewerDialogStatus.textContent =
+      error instanceof Error ? error.message : "Could not upload photo.";
+  }
+});
+
+btnItemDeleteCancel?.addEventListener("click", () => {
+  itemDeleteDialog?.close();
+});
+
+itemDeleteDialog?.addEventListener("close", () => {
+  pendingDeleteTarget = null;
+  if (btnItemDeleteConfirm) btnItemDeleteConfirm.disabled = false;
+  if (itemDeleteDialogMessage) itemDeleteDialogMessage.textContent = "";
+});
+
+btnItemDeleteConfirm?.addEventListener("click", async () => {
+  if (!pendingDeleteTarget || !activeViewerLocation || !locationViewerDialogStatus) return;
+  btnItemDeleteConfirm.disabled = true;
+  const item = pendingDeleteTarget;
+  locationViewerDialogStatus.textContent = `Deleting ${item.name}...`;
+  try {
+    await deleteItem(item.id);
+    itemDeleteDialog?.close();
+    locationViewerDialogStatus.textContent = "Item deleted.";
+    await openLocationViewerModal(activeViewerLocation);
+  } catch (error) {
+    locationViewerDialogStatus.textContent =
+      error instanceof Error ? error.message : "Could not delete item.";
+    if (btnItemDeleteConfirm) btnItemDeleteConfirm.disabled = false;
+  }
 });
 
 void initSupabase().catch((e) => {

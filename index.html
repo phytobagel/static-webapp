@@ -161,14 +161,44 @@
     </dialog>
 
     <dialog id="location-viewer-dialog" aria-labelledby="location-viewer-dialog-title">
+      <button
+        type="button"
+        id="location-viewer-close"
+        class="modal-close-x"
+        aria-label="Close location modal"
+      >
+        ×
+      </button>
       <h2 id="location-viewer-dialog-title">Location</h2>
       <p id="location-viewer-dialog-meta"></p>
       <ul id="location-viewer-dialog-items"></ul>
       <p id="location-viewer-dialog-status" role="status"></p>
-      <p>
-        <button type="button" id="location-viewer-close">Close</button>
+    </dialog>
+
+    <dialog id="photo-viewer-dialog" aria-labelledby="photo-viewer-dialog-title">
+      <button
+        type="button"
+        id="photo-viewer-close"
+        class="modal-close-x"
+        aria-label="Close photo modal"
+      >
+        ×
+      </button>
+      <h2 id="photo-viewer-dialog-title">Photo</h2>
+      <p id="photo-viewer-caption"></p>
+      <img id="photo-viewer-image" alt="" loading="lazy" />
+    </dialog>
+
+    <dialog id="item-delete-dialog" aria-labelledby="item-delete-dialog-title">
+      <h2 id="item-delete-dialog-title">Delete item?</h2>
+      <p id="item-delete-dialog-message"></p>
+      <p class="delete-dialog-actions">
+        <button type="button" id="item-delete-cancel">Cancel</button>
+        <button type="button" id="item-delete-confirm">Delete</button>
       </p>
     </dialog>
+
+    <input type="file" id="item-photo-input" accept="image/*" hidden />
 
     <dialog id="add-location-dialog" aria-labelledby="add-location-dialog-title">
       <h2 id="add-location-dialog-title">Add location</h2>
