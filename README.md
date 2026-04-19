@@ -1,5 +1,9 @@
 # static-webapp
 
+## Local development
+
+After `npm install`, run `npm run dev` to serve the site at [http://localhost:8080](http://localhost:8080) (add that URL to Supabase **Redirect URLs** if you use magic-link sign-in locally).
+
 ## Supabase connection
 
 The app talks to Supabase from the browser using `js/supabase-config.js`. Configure that file and apply the database schema in the Supabase dashboard.
