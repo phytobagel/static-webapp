@@ -7,11 +7,16 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
-  overflow-x: clip;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
   padding: max(0.75rem, env(safe-area-inset-top))
     max(0.75rem, env(safe-area-inset-right))
     max(0.75rem, env(safe-area-inset-bottom))
@@ -19,12 +24,25 @@ body {
 }
 
 main {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+#app-block {
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* Long URLs, IDs, and paths wrap instead of forcing horizontal scroll */
 code,
-dd {
+dd,
+p,
+li,
+h1,
+h2,
+h3 {
   overflow-wrap: anywhere;
 }
 
@@ -47,6 +65,7 @@ textarea {
 button {
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem;
+  white-space: normal;
 }
 
 input[type="text"],
@@ -54,6 +73,7 @@ input[type="email"] {
   min-height: 2.75rem;
   padding: 0.5rem 0.65rem;
   width: 100%;
+  min-width: 0;
 }
 
 input[type="file"] {
@@ -66,12 +86,15 @@ input[type="file"] {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 #add-item-form label:not(.sr-only) {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 #add-location-status {
@@ -84,6 +107,12 @@ input[type="file"] {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#app-block > p > * {
+  min-width: 0;
 }
 
 #app-block > p:has(#signed-in-email) {
@@ -91,20 +120,21 @@ input[type="file"] {
 }
 
 #signed-in-email {
-  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
   flex: 1 1 12rem;
 }
 
-/* History table: scroll horizontally on small screens */
+/* No horizontal scroll: wrap cell contents instead */
 #scan-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 #location-items-list {
   padding-left: 1.25rem;
   margin: 0;
+  max-width: 100%;
 }
 
 #location-items-list li {
@@ -112,16 +142,25 @@ input[type="file"] {
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.35rem 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 #location-items-list li > div:first-child {
   flex-shrink: 0;
   width: 3rem;
   min-height: 3rem;
+  overflow: hidden;
+}
+
+#location-items-list li > div:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #scan-table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -131,6 +170,8 @@ input[type="file"] {
   padding: 0.5rem 0.4rem;
   vertical-align: top;
   text-align: left;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 #scan-table th:first-child,
@@ -138,19 +179,18 @@ input[type="file"] {
   width: 40%;
 }
 
-#scan-table td:last-child {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
 #setup-banner {
   margin: 0 0 1rem;
   padding: 0.75rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
+/* Avoid 100vw — it ignores scrollbar and can overflow; use max-width + margin */
 #qr-dialog {
-  width: calc(100vw - 2rem);
-  max-width: 22rem;
+  box-sizing: border-box;
+  width: min(22rem, 100%);
+  max-width: calc(100% - 2rem);
   max-height: calc(100dvh - 2rem);
   margin: auto;
   padding: 1rem;
@@ -163,7 +203,21 @@ input[type="file"] {
 
 #qr-reader {
   width: 100%;
+  max-width: 100%;
   min-height: 12rem;
+  overflow: hidden;
+}
+
+/* Stack search field + button so width:100% input never overflows a row */
+@media (max-width: 27.99rem) {
+  #app-block > p:has(#location-search-input) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #app-block > p:has(#location-search-input) > button {
+    align-self: flex-start;
+  }
 }
 
 @media (min-width: 28rem) {
