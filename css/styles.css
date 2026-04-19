@@ -1,4 +1,4 @@
-/* Minimal reset + mobile layout */
+/* Minimal mobile-first layout with fixed footer tabs */
 *,
 *::before,
 *::after {
@@ -8,50 +8,36 @@
 html {
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
-  width: 100%;
-  max-width: 100%;
 }
 
 body {
   margin: 0;
   overflow-x: hidden;
-  width: 100%;
-  max-width: 100%;
   padding: max(0.75rem, env(safe-area-inset-top))
     max(0.75rem, env(safe-area-inset-right))
-    max(0.75rem, env(safe-area-inset-bottom))
+    calc(5.5rem + max(0.75rem, env(safe-area-inset-bottom)))
     max(0.75rem, env(safe-area-inset-left));
 }
 
-main {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: hidden;
-}
-
-#app-block {
+main,
+#app-block,
+.app-panel {
   max-width: 100%;
   min-width: 0;
 }
 
-/* Long URLs, IDs, and paths wrap instead of forcing horizontal scroll */
 code,
-dd,
 p,
 li,
 h1,
 h2,
-h3 {
+h3,
+td,
+th {
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* iOS: 16px+ inputs avoid automatic zoom on focus */
 input,
 button,
 select,
@@ -61,117 +47,106 @@ textarea {
   max-width: 100%;
 }
 
-/* Comfortable tap targets (about 44px min) */
 button {
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem;
-  white-space: normal;
 }
 
 input[type="text"],
 input[type="email"] {
-  min-height: 2.75rem;
-  padding: 0.5rem 0.65rem;
   width: 100%;
+  min-height: 2.75rem;
   min-width: 0;
+  padding: 0.5rem 0.65rem;
 }
 
-input[type="file"] {
-  max-width: 100%;
+#setup-banner {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem;
 }
 
 #magic-form,
-#add-location-form,
-#add-item-form {
+#add-location-form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 100%;
-  min-width: 0;
 }
 
-#add-item-form label:not(.sr-only) {
+.signed-in-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-#add-location-status {
-  margin: 0;
-}
-
-/* Signed-in row, action buttons, search row */
-#app-block > p {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  max-width: 100%;
-  min-width: 0;
-}
-
-#app-block > p > * {
-  min-width: 0;
-}
-
-#app-block > p:has(#signed-in-email) {
   justify-content: space-between;
 }
 
 #signed-in-email {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  flex: 1 1 12rem;
+  min-width: 0;
+  flex: 1;
 }
 
-/* No horizontal scroll: wrap cell contents instead */
-#scan-table-wrap {
-  overflow-x: hidden;
-  max-width: 100%;
+.app-panel {
+  padding-bottom: 0.5rem;
 }
 
-#location-items-list {
-  padding-left: 1.25rem;
-  margin: 0;
-  max-width: 100%;
+#scanner-status,
+#history-status,
+#location-viewer-status,
+#add-location-status {
+  margin: 0.5rem 0 0;
+  min-height: 1.2rem;
 }
 
-#location-items-list li {
+#location-viewer-list,
+#location-viewer-dialog-items {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+#location-viewer-list li + li,
+#location-viewer-dialog-items li + li {
+  margin-top: 0.5rem;
+}
+
+.location-viewer-row {
+  width: 100%;
   display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  text-align: left;
+}
+
+.location-viewer-row span {
+  font-size: 0.85rem;
+}
+
+.viewer-item-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 0.75rem;
-  align-items: flex-start;
-  padding: 0.35rem 0;
-  min-width: 0;
-  max-width: 100%;
 }
 
-#location-items-list li > div:first-child {
-  flex-shrink: 0;
-  width: 3rem;
-  min-height: 3rem;
+.viewer-item-row p {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+}
+
+#scan-table-wrap {
   overflow: hidden;
-}
-
-#location-items-list li > div:last-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 #scan-table {
   width: 100%;
-  max-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 #scan-table th,
 #scan-table td {
-  padding: 0.5rem 0.4rem;
-  vertical-align: top;
   text-align: left;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  vertical-align: top;
+  padding: 0.5rem 0.35rem;
 }
 
 #scan-table th:first-child,
@@ -179,79 +154,50 @@ input[type="file"] {
   width: 40%;
 }
 
-#setup-banner {
-  margin: 0 0 1rem;
-  padding: 0.75rem;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+#app-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.5rem max(0.75rem, env(safe-area-inset-right))
+    calc(0.5rem + env(safe-area-inset-bottom))
+    max(0.75rem, env(safe-area-inset-left));
+  border-top: 1px solid currentColor;
+  background: #fff;
 }
 
-/* Avoid 100vw — it ignores scrollbar and can overflow; use max-width + margin */
-#qr-dialog {
-  box-sizing: border-box;
-  width: min(22rem, 100%);
-  max-width: calc(100% - 2rem);
+.app-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 2.75rem;
+}
+
+.app-tab.is-active {
+  font-weight: 700;
+}
+
+#qr-dialog,
+#location-viewer-dialog {
+  width: min(24rem, calc(100% - 2rem));
   max-height: calc(100dvh - 2rem);
-  margin: auto;
   padding: 1rem;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
-#qr-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.4);
+#qr-dialog::backdrop,
+#location-viewer-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
 }
 
 #qr-reader {
   width: 100%;
-  max-width: 100%;
   min-height: 12rem;
   overflow: hidden;
-}
-
-/* Stack search field + button so width:100% input never overflows a row */
-@media (max-width: 27.99rem) {
-  #app-block > p:has(#location-search-input) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  #app-block > p:has(#location-search-input) > button {
-    align-self: flex-start;
-  }
-}
-
-@media (min-width: 28rem) {
-  #magic-form {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
-
-  #magic-form input[type="email"] {
-    flex: 1 1 12rem;
-    width: auto;
-  }
-
-  #add-location-form {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  #add-location-form input[type="text"] {
-    flex: 1 1 12rem;
-    width: auto;
-  }
-
-  #app-block > p:has(#location-search-input) {
-    flex-wrap: nowrap;
-  }
-
-  #location-search-input {
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 0;
-  }
 }
 
 .sr-only {

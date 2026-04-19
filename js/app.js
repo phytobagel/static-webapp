@@ -6,9 +6,6 @@ const SUPABASE_ESM = [
 const LIB_URL =
   "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
 
-const ITEM_IMAGE_BUCKET = "item-images";
-const ITEM_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-
 const yearEl = document.getElementById("year");
 if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
@@ -26,39 +23,40 @@ const btnSignOut = document.getElementById("btn-sign-out");
 const btnRefreshScans = document.getElementById("btn-refresh-scans");
 const scanTableBody = document.getElementById("scan-table-body");
 const historyStatus = document.getElementById("history-status");
-const locationSearchInput = document.getElementById("location-search-input");
-const btnSearchLocation = document.getElementById("btn-search-location");
+const scannerStatus = document.getElementById("scanner-status");
 const addLocationForm = document.getElementById("add-location-form");
 const addLocationInput = document.getElementById("add-location-input");
 const addLocationSubmit = document.getElementById("add-location-submit");
 const addLocationStatus = document.getElementById("add-location-status");
+const locationViewerStatus = document.getElementById("location-viewer-status");
+const locationViewerList = document.getElementById("location-viewer-list");
+
+const tabButtons = document.querySelectorAll("[data-tab-button]");
+const tabPanels = document.querySelectorAll("[data-tab-panel]");
 
 const dialog = document.getElementById("qr-dialog");
 const readerEl = document.getElementById("qr-reader");
 const btnScan = document.getElementById("btn-scan-qr");
 const btnCancel = document.getElementById("qr-cancel");
 const errEl = document.getElementById("qr-dialog-error");
-const resultBox = document.getElementById("qr-result");
-const lookupSaveNote = document.getElementById("lookup-save-note");
-const locationResultFound = document.getElementById("location-result-found");
-const locationNameEl = document.getElementById("location-name");
-const locationCreatedEl = document.getElementById("location-created");
-const locationIdEl = document.getElementById("location-id");
-const locationResultMiss = document.getElementById("location-result-miss");
-const btnCopy = document.getElementById("qr-copy");
-const locationItems = document.getElementById("location-items");
-const locationItemsList = document.getElementById("location-items-list");
-const addItemForm = document.getElementById("add-item-form");
-const addItemName = document.getElementById("add-item-name");
-const addItemImage = document.getElementById("add-item-image");
-const addItemSubmit = document.getElementById("add-item-submit");
-const locationItemsStatus = document.getElementById("location-items-status");
+const locationViewerDialog = document.getElementById("location-viewer-dialog");
+const locationViewerDialogTitle = document.getElementById(
+  "location-viewer-dialog-title"
+);
+const locationViewerDialogMeta = document.getElementById(
+  "location-viewer-dialog-meta"
+);
+const locationViewerDialogItems = document.getElementById(
+  "location-viewer-dialog-items"
+);
+const locationViewerDialogStatus = document.getElementById(
+  "location-viewer-dialog-status"
+);
+const btnLocationViewerClose = document.getElementById("location-viewer-close");
 
 let supabase = null;
 let scanner = null;
 let scanning = false;
-let lastLookupCopyText = "";
-let currentLookupLocationId = null;
 
 function validateSupabaseConfig(url, key) {
   if (!url || !key) return { ok: false, reason: "empty" };
@@ -113,8 +111,20 @@ function showApp(session) {
   setupBanner?.setAttribute("hidden", "");
   authGate?.setAttribute("hidden", "");
   appBlock?.removeAttribute("hidden");
+  setActiveTab("scanner");
   if (signedInEmail && session?.user?.email) {
     signedInEmail.textContent = session.user.email;
+  }
+}
+
+function setActiveTab(tabId) {
+  for (const panel of tabPanels) {
+    panel.hidden = panel.dataset.tabPanel !== tabId;
+  }
+  for (const button of tabButtons) {
+    const isActive = button.dataset.tabButton === tabId;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
   }
 }
 
@@ -186,6 +196,7 @@ function applySession(session) {
   }
   showApp(session);
   void refreshScans();
+  void refreshLocationViewer();
 }
 
 async function initSupabase() {
@@ -292,15 +303,12 @@ btnSignOut?.addEventListener("click", async () => {
   magicMsg.textContent = "";
   scanTableBody?.replaceChildren();
   if (historyStatus) historyStatus.textContent = "";
-  currentLookupLocationId = null;
-  if (locationItems) locationItems.hidden = true;
-  if (locationItemsList) locationItemsList.replaceChildren();
-  addItemForm?.reset();
-  if (locationItemsStatus) {
-    locationItemsStatus.textContent = "";
-  }
+  if (locationViewerList) locationViewerList.replaceChildren();
+  if (locationViewerStatus) locationViewerStatus.textContent = "";
+  if (scannerStatus) scannerStatus.textContent = "";
   addLocationForm?.reset();
   setAddLocationStatus("");
+  locationViewerDialog?.close();
 });
 
 btnRefreshScans?.addEventListener("click", () => {
@@ -348,6 +356,11 @@ function setAddLocationStatus(msg) {
   addLocationStatus.textContent = msg;
 }
 
+function setScannerStatus(msg) {
+  if (!scannerStatus) return;
+  scannerStatus.textContent = msg;
+}
+
 async function stopScanner() {
   if (!scanner || !scanning) {
     scanner = null;
@@ -375,123 +388,132 @@ async function saveScan(content) {
   return { ok: true };
 }
 
-function formatLocationForCopy(location) {
-  return [
-    `Name: ${location.name}`,
-    `Added: ${new Date(location.created_at).toLocaleString()}`,
-    `ID: ${location.id}`,
-  ].join("\n");
+async function fetchLocations() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("storage_locations")
+    .select("id, name, created_at")
+    .order("name", { ascending: true })
+    .limit(500);
+  if (error) throw error;
+  return data ?? [];
 }
 
-function showLookupResult(location, code, saved) {
-  if (!resultBox) return;
-  lastLookupCopyText = "";
-
-  currentLookupLocationId = null;
-  if (locationItems) locationItems.hidden = true;
-  if (locationItemsList) locationItemsList.replaceChildren();
-  if (locationItemsStatus) {
-    locationItemsStatus.textContent = "";
-  }
-
-  if (lookupSaveNote) {
-    if (saved.ok) {
-      lookupSaveNote.hidden = true;
-      lookupSaveNote.textContent = "";
-    } else {
-      lookupSaveNote.hidden = false;
-      lookupSaveNote.textContent = `Not saved to history: ${saved.message}`;
-    }
-  }
-
-  if (location && locationResultFound && locationNameEl && locationCreatedEl && locationIdEl) {
-    locationResultFound.hidden = false;
-    locationNameEl.textContent = location.name;
-    locationCreatedEl.textContent = new Date(location.created_at).toLocaleString();
-    locationIdEl.textContent = location.id;
-    if (locationResultMiss) {
-      locationResultMiss.hidden = true;
-      locationResultMiss.textContent = "";
-    }
-    lastLookupCopyText = formatLocationForCopy(location);
-    currentLookupLocationId = location.id;
-    if (locationItems) locationItems.hidden = false;
-    void loadItemsForLocation(location.id);
-  } else if (locationResultFound && locationResultMiss) {
-    locationResultFound.hidden = true;
-    locationResultMiss.hidden = false;
-    locationResultMiss.textContent = `No storage location named “${code}”. The scanned or typed text must match a location name exactly.`;
-    lastLookupCopyText = code;
-  }
-
-  resultBox.hidden = false;
-}
-
-async function loadItemsForLocation(locationId) {
-  if (!supabase || !locationItemsList || !locationId) return;
-  if (locationItemsStatus) {
-    locationItemsStatus.textContent = "Loading items…";
-  }
-
+async function fetchItemsForLocation(locationId) {
+  if (!supabase) return [];
   const { data, error } = await supabase
     .from("items")
     .select("id, name, image_url, created_at")
     .eq("storage_location_id", locationId)
     .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
 
-  if (error) {
-    if (locationItemsStatus) {
-      locationItemsStatus.textContent = error.message;
-    }
+async function openLocationViewerModal(location) {
+  if (
+    !locationViewerDialog ||
+    !locationViewerDialogTitle ||
+    !locationViewerDialogMeta ||
+    !locationViewerDialogItems ||
+    !locationViewerDialogStatus
+  ) {
     return;
   }
 
-  if (locationItemsStatus) {
-    locationItemsStatus.textContent = "";
-  }
+  locationViewerDialogTitle.textContent = location.name;
+  locationViewerDialogMeta.textContent = `Added ${new Date(
+    location.created_at
+  ).toLocaleString()}`;
+  locationViewerDialogStatus.textContent = "Loading items...";
+  locationViewerDialogItems.replaceChildren();
+  locationViewerDialog.showModal();
 
-  locationItemsList.replaceChildren();
-  if (data.length === 0) {
-    const li = document.createElement("li");
-    li.textContent = "No items yet.";
-    locationItemsList.appendChild(li);
-    return;
-  }
-
-  for (const row of data) {
-    const li = document.createElement("li");
-    const wrap = document.createElement("div");
-    if (row.image_url) {
-      const img = document.createElement("img");
-      img.src = row.image_url;
-      img.alt = "";
-      wrap.appendChild(img);
-    } else {
-      const ph = document.createElement("div");
-      ph.textContent = "—";
-      wrap.appendChild(ph);
+  try {
+    const items = await fetchItemsForLocation(location.id);
+    locationViewerDialogStatus.textContent = "";
+    if (items.length === 0) {
+      const li = document.createElement("li");
+      li.textContent = "No items yet.";
+      locationViewerDialogItems.appendChild(li);
+      return;
     }
-    const meta = document.createElement("div");
-    const nameEl = document.createElement("span");
-    nameEl.textContent = row.name;
-    const dateEl = document.createElement("span");
-    dateEl.textContent = new Date(row.created_at).toLocaleString();
-    meta.append(nameEl, dateEl);
-    li.append(wrap, meta);
-    locationItemsList.appendChild(li);
+
+    for (const item of items) {
+      const li = document.createElement("li");
+      li.className = "viewer-item-row";
+      const details = document.createElement("div");
+      const nameEl = document.createElement("strong");
+      nameEl.textContent = item.name;
+      const dateEl = document.createElement("p");
+      dateEl.textContent = new Date(item.created_at).toLocaleString();
+      details.append(nameEl, dateEl);
+      li.append(details);
+
+      if (item.image_url) {
+        const imageLink = document.createElement("a");
+        imageLink.href = item.image_url;
+        imageLink.target = "_blank";
+        imageLink.rel = "noopener noreferrer";
+        imageLink.textContent = "Photo";
+        li.append(imageLink);
+      }
+
+      locationViewerDialogItems.appendChild(li);
+    }
+  } catch (error) {
+    locationViewerDialogStatus.textContent =
+      error instanceof Error ? error.message : "Could not load items.";
   }
 }
 
-function fileExtensionForUpload(file) {
-  const fromName = file.name?.split(".").pop();
-  if (fromName && /^[a-z0-9]+$/i.test(fromName)) return fromName.toLowerCase();
-  const t = file.type?.split("/")[1];
-  if (t && /^[a-z0-9]+$/i.test(t)) return t.toLowerCase();
-  return "jpg";
+function renderLocationViewerList(locations) {
+  if (!locationViewerList) return;
+  locationViewerList.replaceChildren();
+
+  if (locations.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "No locations yet.";
+    locationViewerList.appendChild(li);
+    return;
+  }
+
+  for (const location of locations) {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "location-viewer-row";
+    const nameEl = document.createElement("strong");
+    nameEl.textContent = location.name;
+    const dateEl = document.createElement("span");
+    dateEl.textContent = new Date(location.created_at).toLocaleDateString();
+    button.append(nameEl, dateEl);
+    button.addEventListener("click", () => {
+      void openLocationViewerModal(location);
+    });
+    li.appendChild(button);
+    locationViewerList.appendChild(li);
+  }
+}
+
+async function refreshLocationViewer() {
+  if (!locationViewerStatus) return;
+  locationViewerStatus.textContent = "Loading locations...";
+  try {
+    const locations = await fetchLocations();
+    renderLocationViewerList(locations);
+    locationViewerStatus.textContent =
+      locations.length === 0
+        ? "Add a location to get started."
+        : `${locations.length} location${locations.length === 1 ? "" : "s"}.`;
+  } catch (error) {
+    locationViewerStatus.textContent =
+      error instanceof Error ? error.message : "Could not load locations.";
+  }
 }
 
 async function runLocationLookup(rawCode) {
-  if (!supabase || !resultBox) return;
+  if (!supabase) return;
   const code = rawCode.trim();
   if (!code) return;
 
@@ -505,27 +527,27 @@ async function runLocationLookup(rawCode) {
   await refreshScans();
 
   if (error) {
-    currentLookupLocationId = null;
-    if (locationItems) locationItems.hidden = true;
-    if (locationItemsList) locationItemsList.replaceChildren();
-    if (lookupSaveNote) {
-      lookupSaveNote.hidden = false;
-      lookupSaveNote.textContent = saved.ok
-        ? error.message
-        : `Lookup failed: ${error.message}. ${saved.message}`;
-    }
-    if (locationResultFound) locationResultFound.hidden = true;
-    if (locationResultMiss) {
-      locationResultMiss.hidden = false;
-      locationResultMiss.textContent = `Could not look up location: ${error.message}`;
-    }
-    lastLookupCopyText = code;
-    resultBox.hidden = false;
+    setScannerStatus(
+      saved.ok
+        ? `Lookup failed: ${error.message}`
+        : `Lookup failed: ${error.message}. ${saved.message}`
+    );
     return;
   }
 
   const location = data?.[0] ?? null;
-  showLookupResult(location, code, saved);
+  if (!location) {
+    setScannerStatus(`No storage location named "${code}".`);
+    return;
+  }
+
+  setScannerStatus(
+    saved.ok
+      ? `Opened ${location.name}.`
+      : `Opened ${location.name}. Not saved to history: ${saved.message}`
+  );
+  setActiveTab("viewer");
+  await openLocationViewerModal(location);
 }
 
 async function openScanner() {
@@ -612,17 +634,13 @@ dialog?.addEventListener("close", () => {
   if (readerEl) readerEl.innerHTML = "";
 });
 
-btnSearchLocation?.addEventListener("click", () => {
-  if (!locationSearchInput) return;
-  void runLocationLookup(locationSearchInput.value);
-});
-
-locationSearchInput?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    void runLocationLookup(locationSearchInput.value);
-  }
-});
+for (const button of tabButtons) {
+  button.addEventListener("click", () => {
+    const tabId = button.dataset.tabButton;
+    if (!tabId) return;
+    setActiveTab(tabId);
+  });
+}
 
 addLocationForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -650,9 +668,10 @@ addLocationForm?.addEventListener("submit", async (e) => {
 
   const existingLocation = existing?.[0] ?? null;
   if (existingLocation) {
-    setAddLocationStatus("That location already exists. Loaded it below.");
-    if (locationSearchInput) locationSearchInput.value = existingLocation.name;
-    showLookupResult(existingLocation, existingLocation.name, { ok: true });
+    setAddLocationStatus("That location already exists.");
+    await refreshLocationViewer();
+    setActiveTab("viewer");
+    await openLocationViewerModal(existingLocation);
     addLocationInput.select();
     if (addLocationSubmit) addLocationSubmit.disabled = false;
     return;
@@ -670,103 +689,22 @@ addLocationForm?.addEventListener("submit", async (e) => {
     return;
   }
 
-  setAddLocationStatus("Location added. You can add items below.");
+  setAddLocationStatus("Location added.");
   addLocationForm.reset();
-  if (locationSearchInput) locationSearchInput.value = inserted.name;
-  showLookupResult(inserted, inserted.name, { ok: true });
+  await refreshLocationViewer();
+  setActiveTab("viewer");
+  await openLocationViewerModal(inserted);
   addLocationInput.focus();
   if (addLocationSubmit) addLocationSubmit.disabled = false;
 });
 
-addItemForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!supabase || !currentLookupLocationId || !addItemName) return;
-  const name = addItemName.value.trim();
-  if (!name) return;
-
-  const file = addItemImage?.files?.[0] ?? null;
-  if (file && file.size > ITEM_IMAGE_MAX_BYTES) {
-    if (locationItemsStatus) {
-      locationItemsStatus.textContent = "Image must be 5 MB or smaller.";
-    }
-    return;
-  }
-
-  if (addItemSubmit) addItemSubmit.disabled = true;
-  if (locationItemsStatus) {
-    locationItemsStatus.textContent = "Saving…";
-  }
-
-  const { data: inserted, error: insertErr } = await supabase
-    .from("items")
-    .insert({
-      storage_location_id: currentLookupLocationId,
-      name,
-    })
-    .select("id")
-    .single();
-
-  if (insertErr || !inserted) {
-    if (locationItemsStatus) {
-      locationItemsStatus.textContent = insertErr?.message ?? "Could not add item.";
-    }
-    if (addItemSubmit) addItemSubmit.disabled = false;
-    return;
-  }
-
-  let pendingWarning = null;
-  if (file && file.size > 0) {
-    const ext = fileExtensionForUpload(file);
-    const path = `${inserted.id}/${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from(ITEM_IMAGE_BUCKET)
-      .upload(path, file, {
-        contentType: file.type || undefined,
-        upsert: true,
-      });
-    if (!upErr) {
-      const { data: pub } = supabase.storage
-        .from(ITEM_IMAGE_BUCKET)
-        .getPublicUrl(path);
-      const imageUrl = pub?.publicUrl ?? null;
-      if (imageUrl) {
-        const { error: updErr } = await supabase
-          .from("items")
-          .update({ image_url: imageUrl })
-          .eq("id", inserted.id);
-        if (updErr) {
-          pendingWarning = `Item saved; image URL not stored: ${updErr.message}`;
-        }
-      }
-    } else {
-      pendingWarning = `Item saved; upload failed: ${upErr.message}`;
-    }
-  }
-
-  addItemForm.reset();
-  if (addItemSubmit) addItemSubmit.disabled = false;
-  await loadItemsForLocation(currentLookupLocationId);
-  if (pendingWarning && locationItemsStatus) {
-    locationItemsStatus.textContent = pendingWarning;
-  }
+btnLocationViewerClose?.addEventListener("click", () => {
+  locationViewerDialog?.close();
 });
 
-btnCopy?.addEventListener("click", async () => {
-  const text = lastLookupCopyText;
-  if (!text) return;
-  const prev = btnCopy.textContent;
-  try {
-    await navigator.clipboard.writeText(text);
-    btnCopy.textContent = "Copied";
-    setTimeout(() => {
-      btnCopy.textContent = prev;
-    }, 1500);
-  } catch {
-    btnCopy.textContent = "Copy failed";
-    setTimeout(() => {
-      btnCopy.textContent = prev;
-    }, 1500);
-  }
+locationViewerDialog?.addEventListener("close", () => {
+  if (locationViewerDialogItems) locationViewerDialogItems.replaceChildren();
+  if (locationViewerDialogStatus) locationViewerDialogStatus.textContent = "";
 });
 
 void initSupabase().catch((e) => {

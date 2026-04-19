@@ -42,89 +42,59 @@
       </section>
 
       <div id="app-block" hidden>
-        <p>
+        <p class="signed-in-row">
           <span id="signed-in-email"></span>
           <button type="button" id="btn-sign-out">Sign out</button>
         </p>
 
-        <p>
+        <section
+          id="panel-scanner"
+          class="app-panel"
+          data-tab-panel="scanner"
+          aria-labelledby="tab-scanner"
+        >
+          <h2>Location Scanner</h2>
+          <p>Scan a QR code to find a location and save it to lookup history.</p>
           <button type="button" id="btn-scan-qr">Scan location QR</button>
-          <button type="button" id="btn-refresh-scans">Refresh history</button>
-        </p>
+          <p id="scanner-status" role="status"></p>
+        </section>
 
-        <p>
-          <label class="sr-only" for="location-search-input">Location name</label>
-          <input
-            type="text"
-            id="location-search-input"
-            name="location"
-            autocomplete="off"
-            placeholder="Or type a location name"
-          />
-          <button type="button" id="btn-search-location">Search</button>
-        </p>
-        <form id="add-location-form" autocomplete="off">
-          <label class="sr-only" for="add-location-input">New location name</label>
-          <input
-            type="text"
-            id="add-location-input"
-            name="location_name"
-            maxlength="500"
-            required
-            placeholder="Create a new storage location"
-          />
-          <button type="submit" id="add-location-submit">Add location</button>
-          <p id="add-location-status" role="status"></p>
-        </form>
+        <section
+          id="panel-viewer"
+          class="app-panel"
+          data-tab-panel="viewer"
+          aria-labelledby="tab-viewer"
+          hidden
+        >
+          <h2>Location Viewer</h2>
+          <form id="add-location-form" autocomplete="off">
+            <label class="sr-only" for="add-location-input">New location name</label>
+            <input
+              type="text"
+              id="add-location-input"
+              name="location_name"
+              maxlength="500"
+              required
+              placeholder="Create a new storage location"
+            />
+            <button type="submit" id="add-location-submit">Add location</button>
+            <p id="add-location-status" role="status"></p>
+          </form>
+          <p id="location-viewer-status" role="status"></p>
+          <ul id="location-viewer-list"></ul>
+        </section>
 
-        <div id="qr-result" hidden>
-          <p>Last lookup</p>
-          <p id="lookup-save-note" hidden></p>
-          <div id="location-result-found" hidden>
-            <h3 id="location-name"></h3>
-            <dl>
-              <div>
-                <dt>Added</dt>
-                <dd id="location-created"></dd>
-              </div>
-              <div>
-                <dt>ID</dt>
-                <dd id="location-id"></dd>
-              </div>
-            </dl>
-            <div id="location-items" hidden>
-              <h3>Items here</h3>
-              <ul id="location-items-list"></ul>
-              <form id="add-item-form" autocomplete="off">
-                <label class="sr-only" for="add-item-name">Item name</label>
-                <input
-                  type="text"
-                  id="add-item-name"
-                  name="name"
-                  maxlength="500"
-                  required
-                  placeholder="New item name"
-                />
-                <label>
-                  Photo
-                  <input
-                    type="file"
-                    id="add-item-image"
-                    name="image"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                  />
-                </label>
-                <button type="submit" id="add-item-submit">Add item</button>
-              </form>
-              <p id="location-items-status" role="status"></p>
-            </div>
-          </div>
-          <p id="location-result-miss" hidden></p>
-          <button type="button" id="qr-copy">Copy details</button>
-        </div>
-
-        <section aria-labelledby="history-heading">
-          <h2 id="history-heading">Lookup history</h2>
+        <section
+          id="panel-history"
+          class="app-panel"
+          data-tab-panel="history"
+          aria-labelledby="tab-history"
+          hidden
+        >
+          <h2 id="history-heading">Lookup History</h2>
+          <p>
+            <button type="button" id="btn-refresh-scans">Refresh history</button>
+          </p>
           <p id="history-status"></p>
           <div id="scan-table-wrap">
             <table id="scan-table">
@@ -138,10 +108,40 @@
             </table>
           </div>
         </section>
+
+        <nav id="app-tabbar" aria-label="App sections">
+          <button
+            type="button"
+            id="tab-scanner"
+            class="app-tab is-active"
+            data-tab-button="scanner"
+            aria-selected="true"
+          >
+            <span aria-hidden="true">▣</span>
+            <span>Scanner</span>
+          </button>
+          <button
+            type="button"
+            id="tab-viewer"
+            class="app-tab"
+            data-tab-button="viewer"
+            aria-selected="false"
+          >
+            <span aria-hidden="true">⌖</span>
+            <span>Viewer</span>
+          </button>
+          <button
+            type="button"
+            id="tab-history"
+            class="app-tab"
+            data-tab-button="history"
+            aria-selected="false"
+          >
+            <span aria-hidden="true">◷</span>
+            <span>History</span>
+          </button>
+        </nav>
       </div>
-
-
-
     </main>
 
     <dialog id="qr-dialog" aria-labelledby="qr-dialog-title">
@@ -154,6 +154,16 @@
       <p id="qr-dialog-error" hidden></p>
       <p>
         <button type="button" id="qr-cancel">Cancel</button>
+      </p>
+    </dialog>
+
+    <dialog id="location-viewer-dialog" aria-labelledby="location-viewer-dialog-title">
+      <h2 id="location-viewer-dialog-title">Location</h2>
+      <p id="location-viewer-dialog-meta"></p>
+      <ul id="location-viewer-dialog-items"></ul>
+      <p id="location-viewer-dialog-status" role="status"></p>
+      <p>
+        <button type="button" id="location-viewer-close">Close</button>
       </p>
     </dialog>
 
