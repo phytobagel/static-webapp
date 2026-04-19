@@ -14,6 +14,7 @@ const setupBannerTitle = document.getElementById("setup-banner-title");
 const setupBannerBody = document.getElementById("setup-banner-body");
 const authGate = document.getElementById("auth-gate");
 const appBlock = document.getElementById("app-block");
+const appTabBar = document.getElementById("app-tabbar");
 const magicForm = document.getElementById("magic-form");
 const magicEmail = document.getElementById("magic-email");
 const magicSubmit = document.getElementById("magic-submit");
@@ -99,6 +100,7 @@ function showSetupMissing(detail) {
   setupBanner?.removeAttribute("hidden");
   authGate?.setAttribute("hidden", "");
   appBlock?.setAttribute("hidden", "");
+  appTabBar?.setAttribute("hidden", "");
 }
 
 function showAuthGate() {
@@ -111,6 +113,7 @@ function showApp(session) {
   setupBanner?.setAttribute("hidden", "");
   authGate?.setAttribute("hidden", "");
   appBlock?.removeAttribute("hidden");
+  appTabBar?.removeAttribute("hidden");
   setActiveTab("scanner");
   if (signedInEmail && session?.user?.email) {
     signedInEmail.textContent = session.user.email;
@@ -215,6 +218,7 @@ async function initSupabase() {
     setupBanner?.removeAttribute("hidden");
     authGate?.setAttribute("hidden", "");
     appBlock?.setAttribute("hidden", "");
+    appTabBar?.setAttribute("hidden", "");
     return;
   }
 
@@ -634,13 +638,12 @@ dialog?.addEventListener("close", () => {
   if (readerEl) readerEl.innerHTML = "";
 });
 
-for (const button of tabButtons) {
-  button.addEventListener("click", () => {
-    const tabId = button.dataset.tabButton;
-    if (!tabId) return;
-    setActiveTab(tabId);
-  });
-}
+appTabBar?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-tab-button]");
+  if (!btn || !appTabBar.contains(btn)) return;
+  const tabId = btn.dataset.tabButton;
+  if (tabId) setActiveTab(tabId);
+});
 
 addLocationForm?.addEventListener("submit", async (e) => {
   e.preventDefault();

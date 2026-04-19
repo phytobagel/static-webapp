@@ -108,41 +108,41 @@
             </table>
           </div>
         </section>
-
-        <nav id="app-tabbar" aria-label="App sections">
-          <button
-            type="button"
-            id="tab-scanner"
-            class="app-tab is-active"
-            data-tab-button="scanner"
-            aria-selected="true"
-          >
-            <span aria-hidden="true">▣</span>
-            <span>Scanner</span>
-          </button>
-          <button
-            type="button"
-            id="tab-viewer"
-            class="app-tab"
-            data-tab-button="viewer"
-            aria-selected="false"
-          >
-            <span aria-hidden="true">⌖</span>
-            <span>Viewer</span>
-          </button>
-          <button
-            type="button"
-            id="tab-history"
-            class="app-tab"
-            data-tab-button="history"
-            aria-selected="false"
-          >
-            <span aria-hidden="true">◷</span>
-            <span>History</span>
-          </button>
-        </nav>
       </div>
     </main>
+
+    <nav id="app-tabbar" class="app-tabbar" aria-label="App sections" hidden>
+      <button
+        type="button"
+        id="tab-scanner"
+        class="app-tab is-active"
+        data-tab-button="scanner"
+        aria-selected="true"
+      >
+        <span aria-hidden="true">▣</span>
+        <span>Scanner</span>
+      </button>
+      <button
+        type="button"
+        id="tab-viewer"
+        class="app-tab"
+        data-tab-button="viewer"
+        aria-selected="false"
+      >
+        <span aria-hidden="true">⌖</span>
+        <span>Viewer</span>
+      </button>
+      <button
+        type="button"
+        id="tab-history"
+        class="app-tab"
+        data-tab-button="history"
+        aria-selected="false"
+      >
+        <span aria-hidden="true">◷</span>
+        <span>History</span>
+      </button>
+    </nav>
 
     <dialog id="qr-dialog" aria-labelledby="qr-dialog-title">
       <h2 id="qr-dialog-title">Scan location QR</h2>
