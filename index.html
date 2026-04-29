@@ -42,10 +42,42 @@
       </section>
 
       <div id="app-block" hidden>
-        <p class="signed-in-row">
+        <div class="signed-in-row">
           <span id="signed-in-email"></span>
+          <div class="header-search" role="search">
+            <label class="sr-only" for="item-search-input">Search items</label>
+            <div class="header-search-control">
+              <svg
+                class="header-search-icon"
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                focusable="false"
+              >
+                <path
+                  d="M8.5 3a5.5 5.5 0 0 1 4.33 8.89l3.14 3.14a.75.75 0 0 1-1.06 1.06l-3.14-3.14A5.5 5.5 0 1 1 8.5 3Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"
+                  fill="currentColor"
+                />
+              </svg>
+              <input
+                type="search"
+                id="item-search-input"
+                autocomplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="item-search-results"
+                placeholder="Search items"
+              />
+            </div>
+            <ul
+              id="item-search-results"
+              class="item-search-results"
+              role="listbox"
+              hidden
+            ></ul>
+          </div>
           <button type="button" id="btn-sign-out">Sign out</button>
-        </p>
+        </div>
 
         <section
           id="panel-scanner"

@@ -21,6 +21,9 @@ const magicSubmit = document.getElementById("magic-submit");
 const magicMsg = document.getElementById("magic-msg");
 const signedInEmail = document.getElementById("signed-in-email");
 const btnSignOut = document.getElementById("btn-sign-out");
+const headerSearch = document.querySelector(".header-search");
+const itemSearchInput = document.getElementById("item-search-input");
+const itemSearchResults = document.getElementById("item-search-results");
 const btnRefreshScans = document.getElementById("btn-refresh-scans");
 const scanTableBody = document.getElementById("scan-table-body");
 const historyStatus = document.getElementById("history-status");
@@ -80,8 +83,15 @@ let scanning = false;
 let activeViewerLocation = null;
 let pendingPhotoTarget = null;
 let pendingDeleteTarget = null;
+let itemSearchDebounce = 0;
+let itemSearchRequestId = 0;
+let itemSearchMatches = [];
+let activeItemSearchIndex = -1;
 const LOCAL_BYPASS_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const IS_LOCALHOST = LOCAL_BYPASS_HOSTS.has(window.location.hostname);
+const ITEM_SEARCH_DEBOUNCE_MS = 180;
+const ITEM_SEARCH_MIN_CHARS = 2;
+const ITEM_SEARCH_RESULT_LIMIT = 6;
 
 function toSafeFileName(value) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -191,6 +201,7 @@ function showSetupMissing(detail) {
   authGate?.setAttribute("hidden", "");
   appBlock?.setAttribute("hidden", "");
   appTabBar?.setAttribute("hidden", "");
+  resetItemSearch();
 }
 
 function showAuthGate() {
@@ -198,6 +209,7 @@ function showAuthGate() {
   authGate?.removeAttribute("hidden");
   appBlock?.setAttribute("hidden", "");
   appTabBar?.setAttribute("hidden", "");
+  resetItemSearch();
 }
 
 function showApp(session) {
@@ -407,6 +419,7 @@ btnSignOut?.addEventListener("click", async () => {
   if (IS_LOCALHOST) return;
   if (!supabase) return;
   await supabase.auth.signOut();
+  resetItemSearch();
   magicMsg.textContent = "";
   scanTableBody?.replaceChildren();
   if (historyStatus) historyStatus.textContent = "";
@@ -533,6 +546,233 @@ async function fetchItemsForLocation(locationId) {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+function normalizeSearchText(value) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function fuzzySubsequenceScore(query, candidate) {
+  let lastIndex = -1;
+  let gaps = 0;
+  for (const char of query) {
+    const index = candidate.indexOf(char, lastIndex + 1);
+    if (index === -1) return null;
+    gaps += index - lastIndex - 1;
+    lastIndex = index;
+  }
+  return gaps;
+}
+
+function scoreItemNameMatch(itemName, query) {
+  const normalizedName = normalizeSearchText(itemName);
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedName || normalizedQuery.length < ITEM_SEARCH_MIN_CHARS) {
+    return null;
+  }
+  if (normalizedName === normalizedQuery) return 0;
+  if (normalizedName.startsWith(normalizedQuery)) {
+    return 10 + normalizedName.length - normalizedQuery.length;
+  }
+
+  const substringIndex = normalizedName.indexOf(normalizedQuery);
+  if (substringIndex !== -1) return 100 + substringIndex;
+
+  const fuzzyScore = fuzzySubsequenceScore(normalizedQuery, normalizedName);
+  return fuzzyScore === null ? null : 200 + fuzzyScore;
+}
+
+function itemSearchLocationFromRow(row) {
+  const location = Array.isArray(row.storage_locations)
+    ? row.storage_locations[0]
+    : row.storage_locations;
+  if (!location?.id || !location?.name || !location?.created_at) return null;
+  return {
+    id: location.id,
+    name: location.name,
+    created_at: location.created_at,
+  };
+}
+
+async function searchItemsByName(query) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("items")
+    .select(
+      "id, name, created_at, storage_location_id, storage_locations(id, name, created_at)"
+    )
+    .order("name", { ascending: true })
+    .limit(500);
+  if (error) throw error;
+
+  return (data ?? [])
+    .map((row) => {
+      const location = itemSearchLocationFromRow(row);
+      const score = scoreItemNameMatch(row.name ?? "", query);
+      if (!location || score === null) return null;
+      return {
+        id: row.id,
+        name: row.name,
+        created_at: row.created_at,
+        location,
+        score,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
+    .slice(0, ITEM_SEARCH_RESULT_LIMIT);
+}
+
+function setItemSearchExpanded(isExpanded) {
+  itemSearchInput?.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+}
+
+function clearItemSearchResults() {
+  itemSearchMatches = [];
+  activeItemSearchIndex = -1;
+  itemSearchResults?.replaceChildren();
+  itemSearchResults?.setAttribute("hidden", "");
+  itemSearchInput?.removeAttribute("aria-activedescendant");
+  setItemSearchExpanded(false);
+}
+
+function resetItemSearch() {
+  window.clearTimeout(itemSearchDebounce);
+  itemSearchRequestId += 1;
+  if (itemSearchInput) itemSearchInput.value = "";
+  clearItemSearchResults();
+}
+
+function showItemSearchMessage(message) {
+  if (!itemSearchResults) return;
+  itemSearchMatches = [];
+  activeItemSearchIndex = -1;
+  itemSearchResults.replaceChildren();
+  const li = document.createElement("li");
+  li.className = "item-search-empty";
+  li.textContent = message;
+  itemSearchResults.appendChild(li);
+  itemSearchResults.removeAttribute("hidden");
+  setItemSearchExpanded(true);
+}
+
+function setActiveItemSearchIndex(index) {
+  const options = itemSearchResults?.querySelectorAll(".item-search-option") ?? [];
+  activeItemSearchIndex = index;
+
+  for (const option of options) {
+    option.classList.remove("is-active");
+    option.setAttribute("aria-selected", "false");
+  }
+
+  const activeOption = options[index];
+  if (!activeOption) {
+    itemSearchInput?.removeAttribute("aria-activedescendant");
+    return;
+  }
+
+  activeOption.classList.add("is-active");
+  activeOption.setAttribute("aria-selected", "true");
+  itemSearchInput?.setAttribute("aria-activedescendant", activeOption.id);
+  activeOption.scrollIntoView({ block: "nearest" });
+}
+
+function renderItemSearchResults(matches) {
+  if (!itemSearchResults) return;
+  itemSearchMatches = matches;
+  activeItemSearchIndex = -1;
+  itemSearchResults.replaceChildren();
+
+  for (const [index, match] of matches.entries()) {
+    const li = document.createElement("li");
+    li.setAttribute("role", "presentation");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = `item-search-option-${index}`;
+    button.className = "item-search-option";
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
+
+    const itemName = document.createElement("strong");
+    itemName.textContent = match.name;
+    const locationName = document.createElement("span");
+    locationName.textContent = `In ${match.location.name}`;
+    button.append(itemName, locationName);
+
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+    });
+    button.addEventListener("click", () => {
+      void selectItemSearchMatch(match);
+    });
+
+    li.appendChild(button);
+    itemSearchResults.appendChild(li);
+  }
+
+  itemSearchResults.removeAttribute("hidden");
+  setItemSearchExpanded(true);
+}
+
+async function runItemSearch(query, requestId) {
+  if (!supabase) {
+    showItemSearchMessage("Search unavailable.");
+    return;
+  }
+
+  showItemSearchMessage("Searching...");
+  try {
+    const matches = await searchItemsByName(query);
+    if (requestId !== itemSearchRequestId) return;
+    if (
+      normalizeSearchText(itemSearchInput?.value ?? "") !==
+      normalizeSearchText(query)
+    ) {
+      return;
+    }
+    if (matches.length === 0) {
+      showItemSearchMessage("No matching items.");
+      return;
+    }
+    renderItemSearchResults(matches);
+  } catch (error) {
+    if (requestId !== itemSearchRequestId) return;
+    showItemSearchMessage(
+      error instanceof Error ? error.message : "Could not search items."
+    );
+  }
+}
+
+function queueItemSearch() {
+  window.clearTimeout(itemSearchDebounce);
+  const query = itemSearchInput?.value.trim() ?? "";
+  itemSearchRequestId += 1;
+
+  if (query.length < ITEM_SEARCH_MIN_CHARS) {
+    clearItemSearchResults();
+    return;
+  }
+
+  const requestId = itemSearchRequestId;
+  itemSearchDebounce = window.setTimeout(() => {
+    void runItemSearch(query, requestId);
+  }, ITEM_SEARCH_DEBOUNCE_MS);
+}
+
+async function selectItemSearchMatch(match) {
+  if (!match?.location) return;
+  window.clearTimeout(itemSearchDebounce);
+  if (itemSearchInput) itemSearchInput.value = match.name;
+  clearItemSearchResults();
+
+  setActiveTab("viewer");
+  if (locationViewerStatus) {
+    locationViewerStatus.textContent = `Opening ${match.location.name} for "${match.name}".`;
+  }
+  await openLocationViewerModal(match.location);
+  if (locationViewerDialogStatus) {
+    locationViewerDialogStatus.textContent = `Showing location for "${match.name}".`;
+  }
 }
 
 async function openLocationViewerModal(location) {
@@ -802,6 +1042,53 @@ appTabBar?.addEventListener("click", (e) => {
   if (!btn || !appTabBar.contains(btn)) return;
   const tabId = btn.dataset.tabButton;
   if (tabId) setActiveTab(tabId);
+});
+
+itemSearchInput?.addEventListener("input", () => {
+  queueItemSearch();
+});
+
+itemSearchInput?.addEventListener("focus", () => {
+  queueItemSearch();
+});
+
+itemSearchInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    clearItemSearchResults();
+    return;
+  }
+
+  if (itemSearchMatches.length === 0) return;
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    setActiveItemSearchIndex(
+      (activeItemSearchIndex + 1) % itemSearchMatches.length
+    );
+    return;
+  }
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    setActiveItemSearchIndex(
+      activeItemSearchIndex <= 0
+        ? itemSearchMatches.length - 1
+        : activeItemSearchIndex - 1
+    );
+    return;
+  }
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    const match =
+      itemSearchMatches[activeItemSearchIndex] ?? itemSearchMatches[0];
+    void selectItemSearchMatch(match);
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!headerSearch || !(event.target instanceof Node)) return;
+  if (!headerSearch.contains(event.target)) clearItemSearchResults();
 });
 
 function openAddLocationModal() {
