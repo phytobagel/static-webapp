@@ -216,6 +216,30 @@
         </button>
       </div>
       <p id="location-viewer-dialog-meta"></p>
+      <div class="location-items-toolbar" aria-label="Location item view">
+        <span>View</span>
+        <div
+          class="location-items-view-toggle"
+          role="group"
+          aria-label="Choose item view"
+        >
+          <button
+            type="button"
+            id="location-items-view-list"
+            class="is-active"
+            aria-pressed="true"
+          >
+            List
+          </button>
+          <button
+            type="button"
+            id="location-items-view-gallery"
+            aria-pressed="false"
+          >
+            Gallery
+          </button>
+        </div>
+      </div>
       <ul id="location-viewer-dialog-items"></ul>
       <p id="location-viewer-dialog-status" role="status"></p>
     </dialog>

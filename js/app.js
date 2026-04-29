@@ -60,6 +60,12 @@ const locationViewerDialogItems = document.getElementById(
 const locationViewerDialogStatus = document.getElementById(
   "location-viewer-dialog-status"
 );
+const locationItemsViewListButton = document.getElementById(
+  "location-items-view-list"
+);
+const locationItemsViewGalleryButton = document.getElementById(
+  "location-items-view-gallery"
+);
 const btnOpenAddItem = document.getElementById("btn-open-add-item");
 const addItemDialog = document.getElementById("add-item-dialog");
 const addItemForm = document.getElementById("add-item-form");
@@ -82,13 +88,16 @@ let supabase = null;
 let scanner = null;
 let scanning = false;
 let activeViewerLocation = null;
+let activeViewerItems = [];
+let activeLocationItemsView = "list";
+let activeViewerHighlightItemId = null;
 let pendingPhotoTarget = null;
 let pendingDeleteTarget = null;
 let itemSearchDebounce = 0;
 let itemSearchRequestId = 0;
 let itemSearchMatches = [];
 let activeItemSearchIndex = -1;
-/** Timeout id for removing the soft search-hit highlight on an item row (30s). */
+/** Timeout id for removing the soft search-hit highlight on a visible item (30s). */
 let searchHighlightRemovalTimeoutId = 0;
 const LOCAL_BYPASS_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const IS_LOCALHOST = LOCAL_BYPASS_HOSTS.has(window.location.hostname);
@@ -793,11 +802,182 @@ function clearSearchHighlightRemovalTimer() {
 function findViewerItemRowEl(itemId) {
   if (!locationViewerDialogItems || !itemId) return null;
   for (const li of locationViewerDialogItems.querySelectorAll(
-    ".viewer-item-row[data-item-id]"
+    ".viewer-item-row[data-item-id], .viewer-gallery-item[data-item-id]"
   )) {
     if (li.dataset.itemId === itemId) return li;
   }
   return null;
+}
+
+function beginItemPhotoChange(item) {
+  if (!itemPhotoInput) return;
+  pendingPhotoTarget = item;
+  itemPhotoInput.value = "";
+  itemPhotoInput.click();
+}
+
+function createPhotoChangeButton(item, className, text) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = text ?? (item.image_url ? "Change Photo" : "Add Photo");
+  button.addEventListener("click", () => {
+    beginItemPhotoChange(item);
+  });
+  return button;
+}
+
+function createItemDeleteButton(item, className = "viewer-item-delete") {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = "Delete";
+  button.addEventListener("click", () => {
+    openItemDeleteModal(item);
+  });
+  return button;
+}
+
+function renderLocationViewerItemList(items, highlightItemId) {
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.className = "viewer-item-row";
+    li.dataset.itemId = item.id;
+    if (highlightItemId && item.id === highlightItemId) {
+      li.classList.add("viewer-item-row--search-highlight");
+    }
+    const details = document.createElement("div");
+    const nameEl = document.createElement("strong");
+    nameEl.textContent = item.name;
+    const dateEl = document.createElement("p");
+    dateEl.textContent = new Date(item.created_at).toLocaleString();
+    details.append(nameEl, dateEl);
+    li.append(details);
+
+    const actions = document.createElement("div");
+    actions.className = "viewer-item-actions";
+
+    if (item.image_url) {
+      const imageButton = document.createElement("button");
+      imageButton.type = "button";
+      imageButton.className = "viewer-item-photo";
+      imageButton.textContent = "Photo";
+      imageButton.addEventListener("click", () => {
+        openPhotoViewerModal(item.image_url, item.name);
+      });
+      actions.append(imageButton);
+    }
+
+    actions.append(
+      createPhotoChangeButton(item, "viewer-item-photo"),
+      createItemDeleteButton(item)
+    );
+    li.append(actions);
+
+    locationViewerDialogItems.appendChild(li);
+  }
+}
+
+function renderLocationViewerItemGallery(items, highlightItemId) {
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.className = "viewer-gallery-item";
+    li.dataset.itemId = item.id;
+    if (highlightItemId && item.id === highlightItemId) {
+      li.classList.add("viewer-item-row--search-highlight");
+    }
+
+    const photoButton = document.createElement("button");
+    photoButton.type = "button";
+    photoButton.className = "viewer-gallery-photo";
+    photoButton.setAttribute(
+      "aria-label",
+      item.image_url ? `Open photo for ${item.name}` : `Add photo for ${item.name}`
+    );
+    photoButton.addEventListener("click", () => {
+      if (item.image_url) {
+        openPhotoViewerModal(item.image_url, item.name);
+        return;
+      }
+      beginItemPhotoChange(item);
+    });
+
+    if (item.image_url) {
+      const img = document.createElement("img");
+      img.src = item.image_url;
+      img.alt = `Photo for ${item.name}`;
+      img.loading = "lazy";
+      photoButton.appendChild(img);
+    } else {
+      const placeholder = document.createElement("span");
+      placeholder.className = "viewer-gallery-placeholder";
+      placeholder.textContent = "No photo";
+      photoButton.appendChild(placeholder);
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "viewer-gallery-overlay";
+    const nameEl = document.createElement("strong");
+    nameEl.textContent = item.name;
+    const actions = document.createElement("div");
+    actions.className = "viewer-gallery-actions";
+    actions.append(
+      createPhotoChangeButton(
+        item,
+        "viewer-gallery-action",
+        item.image_url ? "Change" : "Add"
+      ),
+      createItemDeleteButton(item, "viewer-gallery-action viewer-gallery-action-delete")
+    );
+    overlay.append(nameEl, actions);
+
+    li.append(photoButton, overlay);
+    locationViewerDialogItems.appendChild(li);
+  }
+}
+
+function updateLocationItemsViewToggle() {
+  const isGallery = activeLocationItemsView === "gallery";
+  locationItemsViewListButton?.classList.toggle("is-active", !isGallery);
+  locationItemsViewGalleryButton?.classList.toggle("is-active", isGallery);
+  locationItemsViewListButton?.setAttribute(
+    "aria-pressed",
+    isGallery ? "false" : "true"
+  );
+  locationItemsViewGalleryButton?.setAttribute(
+    "aria-pressed",
+    isGallery ? "true" : "false"
+  );
+}
+
+function renderLocationViewerItems(items, highlightItemId = null) {
+  if (!locationViewerDialogItems) return;
+  updateLocationItemsViewToggle();
+  locationViewerDialogItems.replaceChildren();
+  locationViewerDialogItems.classList.toggle(
+    "location-items-view--gallery",
+    activeLocationItemsView === "gallery"
+  );
+
+  if (items.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "No items yet.";
+    locationViewerDialogItems.appendChild(li);
+    return;
+  }
+
+  if (activeLocationItemsView === "gallery") {
+    renderLocationViewerItemGallery(items, highlightItemId);
+    return;
+  }
+
+  renderLocationViewerItemList(items, highlightItemId);
+}
+
+function setLocationItemsView(view) {
+  if (view !== "list" && view !== "gallery") return;
+  activeLocationItemsView = view;
+  renderLocationViewerItems(activeViewerItems, activeViewerHighlightItemId);
 }
 
 /**
@@ -808,6 +988,7 @@ function findViewerItemRowEl(itemId) {
 async function openLocationViewerModal(location, options = {}) {
   const highlightItemId = options.highlightItemId ?? null;
   clearSearchHighlightRemovalTimer();
+  activeViewerHighlightItemId = highlightItemId;
 
   if (
     !locationViewerDialog ||
@@ -825,72 +1006,17 @@ async function openLocationViewerModal(location, options = {}) {
   ).toLocaleString()}`;
   activeViewerLocation = location;
   locationViewerDialogStatus.textContent = "Loading items...";
+  activeViewerItems = [];
   locationViewerDialogItems.replaceChildren();
   if (!locationViewerDialog.open) locationViewerDialog.showModal();
 
   try {
     const items = await fetchItemsForLocation(location.id);
+    activeViewerItems = items;
     locationViewerDialogStatus.textContent = "";
-    if (items.length === 0) {
-      const li = document.createElement("li");
-      li.textContent = "No items yet.";
-      locationViewerDialogItems.appendChild(li);
-      return;
-    }
+    renderLocationViewerItems(items, highlightItemId);
 
-    for (const item of items) {
-      const li = document.createElement("li");
-      li.className = "viewer-item-row";
-      li.dataset.itemId = item.id;
-      if (highlightItemId && item.id === highlightItemId) {
-        li.classList.add("viewer-item-row--search-highlight");
-      }
-      const details = document.createElement("div");
-      const nameEl = document.createElement("strong");
-      nameEl.textContent = item.name;
-      const dateEl = document.createElement("p");
-      dateEl.textContent = new Date(item.created_at).toLocaleString();
-      details.append(nameEl, dateEl);
-      li.append(details);
-
-      const actions = document.createElement("div");
-      actions.className = "viewer-item-actions";
-
-      if (item.image_url) {
-        const imageButton = document.createElement("button");
-        imageButton.type = "button";
-        imageButton.className = "viewer-item-photo";
-        imageButton.textContent = "Photo";
-        imageButton.addEventListener("click", () => {
-          openPhotoViewerModal(item.image_url, item.name);
-        });
-        actions.append(imageButton);
-      }
-
-      const changePhotoButton = document.createElement("button");
-      changePhotoButton.type = "button";
-      changePhotoButton.className = "viewer-item-photo";
-      changePhotoButton.textContent = item.image_url ? "Change Photo" : "Add Photo";
-      changePhotoButton.addEventListener("click", () => {
-        if (!itemPhotoInput) return;
-        pendingPhotoTarget = item;
-        itemPhotoInput.value = "";
-        itemPhotoInput.click();
-      });
-      actions.append(changePhotoButton);
-
-      const deleteButton = document.createElement("button");
-      deleteButton.type = "button";
-      deleteButton.className = "viewer-item-delete";
-      deleteButton.textContent = "Delete";
-      deleteButton.addEventListener("click", () => {
-        openItemDeleteModal(item);
-      });
-      actions.append(deleteButton);
-      li.append(actions);
-
-      locationViewerDialogItems.appendChild(li);
-    }
+    if (items.length === 0) return;
 
     if (highlightItemId) {
       const highlighted = findViewerItemRowEl(highlightItemId);
@@ -898,6 +1024,7 @@ async function openLocationViewerModal(location, options = {}) {
         highlighted.scrollIntoView({ block: "nearest", behavior: "smooth" });
         searchHighlightRemovalTimeoutId = window.setTimeout(() => {
           searchHighlightRemovalTimeoutId = 0;
+          activeViewerHighlightItemId = null;
           findViewerItemRowEl(highlightItemId)?.classList.remove(
             "viewer-item-row--search-highlight"
           );
@@ -1156,6 +1283,14 @@ btnOpenAddItem?.addEventListener("click", () => {
   openAddItemModal();
 });
 
+locationItemsViewListButton?.addEventListener("click", () => {
+  setLocationItemsView("list");
+});
+
+locationItemsViewGalleryButton?.addEventListener("click", () => {
+  setLocationItemsView("gallery");
+});
+
 addItemCancel?.addEventListener("click", () => {
   addItemDialog?.close();
 });
@@ -1271,6 +1406,8 @@ locationViewerDialog?.addEventListener("close", () => {
   setAddItemStatus("");
   addItemDialog?.close();
   activeViewerLocation = null;
+  activeViewerItems = [];
+  activeViewerHighlightItemId = null;
   pendingPhotoTarget = null;
   pendingDeleteTarget = null;
   if (locationViewerDialogItems) locationViewerDialogItems.replaceChildren();

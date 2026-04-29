@@ -417,6 +417,47 @@ body:has(#app-header-bar:not([hidden])) #app-block {
   flex-shrink: 0;
 }
 
+.location-items-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.65rem 0 0;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.location-items-view-toggle {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #c5ccd6;
+  border-radius: 9999px;
+  background: #f8fafc;
+}
+
+.location-items-view-toggle button {
+  min-height: 2rem;
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+}
+
+.location-items-view-toggle button + button {
+  border-left: 1px solid #c5ccd6;
+}
+
+.location-items-view-toggle button.is-active {
+  background: #334155;
+  color: #fff;
+}
+
+.location-items-view-toggle button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
 #location-viewer-list {
   margin: 0;
   padding: 0.45rem 0.55rem;
@@ -432,6 +473,20 @@ body:has(#app-header-bar:not([hidden])) #app-block {
 #location-viewer-list li + li,
 #location-viewer-dialog-items li + li {
   margin-top: 0.5rem;
+}
+
+#location-viewer-dialog-items.location-items-view--gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  padding: 1px;
+  border-radius: 0.35rem;
+  background: #fff;
+}
+
+#location-viewer-dialog-items.location-items-view--gallery li + li {
+  margin-top: 0;
 }
 
 .location-viewer-row {
@@ -530,6 +585,96 @@ body:has(#app-header-bar:not([hidden])) #app-block {
 .viewer-item-row p {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
+}
+
+.viewer-gallery-item {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #000;
+}
+
+.viewer-gallery-item.viewer-item-row--search-highlight {
+  box-shadow: inset 0 0 0 3px rgba(251, 146, 60, 0.95);
+}
+
+.viewer-gallery-photo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  cursor: pointer;
+}
+
+.viewer-gallery-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.viewer-gallery-placeholder {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.viewer-gallery-overlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.6rem 0.45rem 0.45rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.82), transparent);
+  color: #fff;
+  pointer-events: none;
+}
+
+.viewer-gallery-overlay strong {
+  font-size: 0.82rem;
+  line-height: 1.15;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.viewer-gallery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  pointer-events: auto;
+}
+
+.viewer-gallery-action {
+  min-height: 1.65rem;
+  padding: 0.15rem 0.38rem;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.viewer-gallery-action-delete {
+  border-color: rgba(254, 202, 202, 0.8);
+  color: #fecaca;
+}
+
+.viewer-gallery-photo:focus-visible,
+.viewer-gallery-action:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
 }
 
 #scan-table-wrap {
