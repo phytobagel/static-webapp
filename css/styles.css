@@ -140,7 +140,8 @@ input[type="email"] {
 }
 
 #magic-form,
-#add-location-form {
+#add-location-form,
+#add-item-form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -231,7 +232,8 @@ input[type="email"] {
   outline-offset: 2px;
 }
 
-#add-location-form label {
+#add-location-form label,
+#add-item-form label {
   font-size: 0.9rem;
   color: #3d4450;
 }
@@ -247,9 +249,32 @@ input[type="email"] {
 #scanner-status,
 #history-status,
 #location-viewer-status,
-#add-location-status {
+#add-location-status,
+#add-item-status {
   margin: 0.5rem 0 0;
   min-height: 1.2rem;
+}
+
+.location-viewer-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-right: 2rem;
+  min-width: 0;
+}
+
+.location-viewer-dialog-header h2 {
+  margin: 0;
+  min-width: 0;
+}
+
+#location-viewer-dialog-title {
+  flex: 1 1 auto;
+}
+
+#btn-open-add-item {
+  flex-shrink: 0;
 }
 
 #location-viewer-list {
@@ -533,7 +558,8 @@ input[type="email"] {
 #location-viewer-dialog::backdrop,
 #photo-viewer-dialog::backdrop,
 #item-delete-dialog::backdrop,
-#add-location-dialog::backdrop {
+#add-location-dialog::backdrop,
+#add-item-dialog::backdrop {
   background: rgba(0, 0, 0, 0.35);
 }
 

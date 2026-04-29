@@ -169,7 +169,18 @@
       >
         ×
       </button>
-      <h2 id="location-viewer-dialog-title">Location</h2>
+      <div class="location-viewer-dialog-header">
+        <h2 id="location-viewer-dialog-title">Location</h2>
+        <button
+          type="button"
+          id="btn-open-add-item"
+          class="btn-discreet-add"
+          aria-label="Add item"
+          title="Add item"
+        >
+          +
+        </button>
+      </div>
       <p id="location-viewer-dialog-meta"></p>
       <ul id="location-viewer-dialog-items"></ul>
       <p id="location-viewer-dialog-status" role="status"></p>
@@ -199,6 +210,26 @@
     </dialog>
 
     <input type="file" id="item-photo-input" accept="image/*" hidden />
+
+    <dialog id="add-item-dialog" aria-labelledby="add-item-dialog-title">
+      <h2 id="add-item-dialog-title">Add item</h2>
+      <form id="add-item-form" autocomplete="off">
+        <label for="add-item-input">Item name</label>
+        <input
+          type="text"
+          id="add-item-input"
+          name="item_name"
+          maxlength="500"
+          required
+          placeholder="e.g. Blue bin 12"
+        />
+        <p id="add-item-status" role="status"></p>
+        <p class="add-location-actions">
+          <button type="button" id="add-item-cancel">Cancel</button>
+          <button type="submit" id="add-item-submit">Add</button>
+        </p>
+      </form>
+    </dialog>
 
     <dialog id="add-location-dialog" aria-labelledby="add-location-dialog-title">
       <h2 id="add-location-dialog-title">Add location</h2>

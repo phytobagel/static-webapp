@@ -45,6 +45,8 @@ The app stores QR reads in `public.qr_scans`. The **`content`** column is the ra
 
 `public.storage_locations` holds rows for each location (`name`, timestamps, optional `user_id`). It exists alongside scans; the app does not require a foreign key from `qr_scans` to `storage_locations`. If you later want strict matching (every scan must reference a real location row, or renames should propagate), you can add a `storage_location_id` column and migrate—nothing in this repo enforces that yet.
 
+Signed-in users can browse **Viewer** → tap a storage location → use **Add item** (the **+** next to the location title) to create rows in `public.items` for that location. Items can later have photos attached or be deleted from the same screen.
+
 ### 4. Configure authentication URLs
 
 So magic-link sign-in redirects to your real site:

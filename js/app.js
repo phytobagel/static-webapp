@@ -56,6 +56,13 @@ const locationViewerDialogItems = document.getElementById(
 const locationViewerDialogStatus = document.getElementById(
   "location-viewer-dialog-status"
 );
+const btnOpenAddItem = document.getElementById("btn-open-add-item");
+const addItemDialog = document.getElementById("add-item-dialog");
+const addItemForm = document.getElementById("add-item-form");
+const addItemInput = document.getElementById("add-item-input");
+const addItemSubmit = document.getElementById("add-item-submit");
+const addItemCancel = document.getElementById("add-item-cancel");
+const addItemStatus = document.getElementById("add-item-status");
 const btnLocationViewerClose = document.getElementById("location-viewer-close");
 const photoViewerDialog = document.getElementById("photo-viewer-dialog");
 const photoViewerCaption = document.getElementById("photo-viewer-caption");
@@ -115,6 +122,24 @@ async function deleteItem(itemId) {
   if (!supabase) throw new Error("Delete unavailable right now.");
   const { error } = await supabase.from("items").delete().eq("id", itemId);
   if (error) throw error;
+}
+
+/**
+ * Inserts a row into `items` for the given storage location.
+ * @param {string} locationId
+ * @param {string} name
+ * @returns {Promise<{ id: string; name: string; image_url: string | null; created_at: string }>}
+ */
+async function createItemForLocation(locationId, name) {
+  if (!supabase) throw new Error("Add item unavailable right now.");
+  const { data, error } = await supabase
+    .from("items")
+    .insert({ storage_location_id: locationId, name })
+    .select("id, name, image_url, created_at")
+    .single();
+  if (error) throw error;
+  if (!data) throw new Error("Could not create item.");
+  return data;
 }
 
 function openItemDeleteModal(item) {
@@ -391,6 +416,9 @@ btnSignOut?.addEventListener("click", async () => {
   addLocationForm?.reset();
   setAddLocationStatus("");
   addLocationDialog?.close();
+  addItemForm?.reset();
+  setAddItemStatus("");
+  addItemDialog?.close();
   locationViewerDialog?.close();
 });
 
@@ -437,6 +465,20 @@ function setError(msg) {
 function setAddLocationStatus(msg) {
   if (!addLocationStatus) return;
   addLocationStatus.textContent = msg;
+}
+
+function setAddItemStatus(msg) {
+  if (!addItemStatus) return;
+  addItemStatus.textContent = msg;
+}
+
+/** Opens the add-item dialog for the current location modal (requires `activeViewerLocation`). */
+function openAddItemModal() {
+  if (!activeViewerLocation || !addItemDialog || !addItemForm) return;
+  setAddItemStatus("");
+  addItemForm.reset();
+  addItemDialog.showModal();
+  queueMicrotask(() => addItemInput?.focus());
 }
 
 function setScannerStatus(msg) {
@@ -773,6 +815,49 @@ btnOpenAddLocation?.addEventListener("click", () => {
   openAddLocationModal();
 });
 
+btnOpenAddItem?.addEventListener("click", () => {
+  openAddItemModal();
+});
+
+addItemCancel?.addEventListener("click", () => {
+  addItemDialog?.close();
+});
+
+addItemDialog?.addEventListener("close", () => {
+  addItemForm?.reset();
+  if (addItemSubmit) addItemSubmit.disabled = false;
+});
+
+addItemForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabase || !addItemInput || !activeViewerLocation) {
+    setAddItemStatus("Open a location first.");
+    return;
+  }
+
+  const name = addItemInput.value.trim();
+  if (!name) return;
+
+  const location = activeViewerLocation;
+  if (addItemSubmit) addItemSubmit.disabled = true;
+  setAddItemStatus("Adding item…");
+
+  try {
+    await createItemForLocation(location.id, name);
+    addItemForm.reset();
+    addItemDialog?.close();
+    await openLocationViewerModal(location);
+    if (locationViewerDialogStatus) {
+      locationViewerDialogStatus.textContent = "Item added.";
+    }
+  } catch (error) {
+    setAddItemStatus(
+      error instanceof Error ? error.message : "Could not add item."
+    );
+    if (addItemSubmit) addItemSubmit.disabled = false;
+  }
+});
+
 addLocationCancel?.addEventListener("click", () => {
   addLocationDialog?.close();
 });
@@ -845,6 +930,9 @@ btnLocationViewerClose?.addEventListener("click", () => {
 locationViewerDialog?.addEventListener("close", () => {
   photoViewerDialog?.close();
   itemDeleteDialog?.close();
+  addItemForm?.reset();
+  setAddItemStatus("");
+  addItemDialog?.close();
   activeViewerLocation = null;
   pendingPhotoTarget = null;
   pendingDeleteTarget = null;
