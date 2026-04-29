@@ -14,6 +14,7 @@ const setupBannerTitle = document.getElementById("setup-banner-title");
 const setupBannerBody = document.getElementById("setup-banner-body");
 const authGate = document.getElementById("auth-gate");
 const appBlock = document.getElementById("app-block");
+const appHeaderBar = document.getElementById("app-header-bar");
 const appTabBar = document.getElementById("app-tabbar");
 const magicForm = document.getElementById("magic-form");
 const magicEmail = document.getElementById("magic-email");
@@ -203,6 +204,7 @@ function showSetupMissing(detail) {
   setupBanner?.removeAttribute("hidden");
   authGate?.setAttribute("hidden", "");
   appBlock?.setAttribute("hidden", "");
+  appHeaderBar?.setAttribute("hidden", "");
   appTabBar?.setAttribute("hidden", "");
   resetItemSearch();
 }
@@ -211,6 +213,7 @@ function showAuthGate() {
   setupBanner?.setAttribute("hidden", "");
   authGate?.removeAttribute("hidden");
   appBlock?.setAttribute("hidden", "");
+  appHeaderBar?.setAttribute("hidden", "");
   appTabBar?.setAttribute("hidden", "");
   resetItemSearch();
 }
@@ -219,6 +222,7 @@ function showApp(session) {
   setupBanner?.setAttribute("hidden", "");
   authGate?.setAttribute("hidden", "");
   appBlock?.removeAttribute("hidden");
+  appHeaderBar?.removeAttribute("hidden");
   appTabBar?.removeAttribute("hidden");
   setActiveTab("scanner");
   if (signedInEmail) {
@@ -335,6 +339,7 @@ async function initSupabase() {
     setupBanner?.removeAttribute("hidden");
     authGate?.setAttribute("hidden", "");
     appBlock?.setAttribute("hidden", "");
+    appHeaderBar?.setAttribute("hidden", "");
     appTabBar?.setAttribute("hidden", "");
     return;
   }
@@ -765,7 +770,7 @@ function queueItemSearch() {
 async function selectItemSearchMatch(match) {
   if (!match?.location) return;
   window.clearTimeout(itemSearchDebounce);
-  if (itemSearchInput) itemSearchInput.value = match.name;
+  if (itemSearchInput) itemSearchInput.value = "";
   clearItemSearchResults();
 
   setActiveTab("viewer");

@@ -147,6 +147,30 @@ input[type="email"] {
   gap: 0.5rem;
 }
 
+/* Full-bleed fixed header (mirrors bottom #app-tabbar chrome). */
+.app-header-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  padding: calc(0.65rem + env(safe-area-inset-top))
+    max(0.75rem, env(safe-area-inset-right)) 0.65rem
+    max(0.75rem, env(safe-area-inset-left));
+  border-bottom: 1px solid #b8bec8;
+  border-radius: 0;
+  background: #fff;
+  box-shadow:
+    0 4px 0 rgba(255, 255, 255, 0.7) inset,
+    0 8px 28px rgba(15, 23, 42, 0.12);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .signed-in-row {
   display: flex;
   align-items: center;
@@ -155,16 +179,17 @@ input[type="email"] {
   justify-content: space-between;
   min-width: 0;
   max-width: 100%;
-  margin: 0 0 0.75rem;
+  margin: 0;
   flex: 0 0 auto;
-  /* Match the bottom tab bar: distinct chrome from the page body (#e4e7ec). */
-  padding: 0.65rem 0.75rem;
-  background: #fff;
-  border: 1px solid #b8bec8;
-  border-radius: 0.5rem;
-  box-shadow:
-    inset 0 -4px 0 rgba(255, 255, 255, 0.7),
-    0 8px 28px rgba(15, 23, 42, 0.12);
+}
+
+/* Header uses fixed positioning and includes top safe-area padding; don’t double-count on body. */
+body:has(#app-header-bar:not([hidden])) {
+  padding-top: 0;
+}
+
+body:has(#app-header-bar:not([hidden])) #app-block {
+  padding-top: calc(env(safe-area-inset-top) + clamp(5.75rem, 16vh, 8rem));
 }
 
 #signed-in-email {
@@ -445,6 +470,7 @@ input[type="email"] {
 }
 
 .viewer-item-row.viewer-item-row--search-highlight {
+  margin: 0.3rem 0.25rem;
   background-color: rgba(255, 247, 237, 0.92);
   box-shadow: inset 0 0 0 1px rgba(251, 146, 60, 0.28);
 }
