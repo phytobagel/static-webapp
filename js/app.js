@@ -87,11 +87,14 @@ let itemSearchDebounce = 0;
 let itemSearchRequestId = 0;
 let itemSearchMatches = [];
 let activeItemSearchIndex = -1;
+/** Timeout id for removing the soft search-hit highlight on an item row (30s). */
+let searchHighlightRemovalTimeoutId = 0;
 const LOCAL_BYPASS_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const IS_LOCALHOST = LOCAL_BYPASS_HOSTS.has(window.location.hostname);
 const ITEM_SEARCH_DEBOUNCE_MS = 180;
 const ITEM_SEARCH_MIN_CHARS = 2;
 const ITEM_SEARCH_RESULT_LIMIT = 6;
+const SEARCH_HIGHLIGHT_DURATION_MS = 30_000;
 
 function toSafeFileName(value) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -769,13 +772,38 @@ async function selectItemSearchMatch(match) {
   if (locationViewerStatus) {
     locationViewerStatus.textContent = `Opening ${match.location.name} for "${match.name}".`;
   }
-  await openLocationViewerModal(match.location);
+  await openLocationViewerModal(match.location, { highlightItemId: match.id });
   if (locationViewerDialogStatus) {
     locationViewerDialogStatus.textContent = `Showing location for "${match.name}".`;
   }
 }
 
-async function openLocationViewerModal(location) {
+function clearSearchHighlightRemovalTimer() {
+  if (searchHighlightRemovalTimeoutId) {
+    window.clearTimeout(searchHighlightRemovalTimeoutId);
+    searchHighlightRemovalTimeoutId = 0;
+  }
+}
+
+function findViewerItemRowEl(itemId) {
+  if (!locationViewerDialogItems || !itemId) return null;
+  for (const li of locationViewerDialogItems.querySelectorAll(
+    ".viewer-item-row[data-item-id]"
+  )) {
+    if (li.dataset.itemId === itemId) return li;
+  }
+  return null;
+}
+
+/**
+ * Opens the location modal and loads its items.
+ * @param {{ id: string; name: string; created_at: string }} location
+ * @param {{ highlightItemId?: string }} [options] If set, that item row is softly highlighted for 30 seconds.
+ */
+async function openLocationViewerModal(location, options = {}) {
+  const highlightItemId = options.highlightItemId ?? null;
+  clearSearchHighlightRemovalTimer();
+
   if (
     !locationViewerDialog ||
     !locationViewerDialogTitle ||
@@ -808,6 +836,10 @@ async function openLocationViewerModal(location) {
     for (const item of items) {
       const li = document.createElement("li");
       li.className = "viewer-item-row";
+      li.dataset.itemId = item.id;
+      if (highlightItemId && item.id === highlightItemId) {
+        li.classList.add("viewer-item-row--search-highlight");
+      }
       const details = document.createElement("div");
       const nameEl = document.createElement("strong");
       nameEl.textContent = item.name;
@@ -853,6 +885,19 @@ async function openLocationViewerModal(location) {
       li.append(actions);
 
       locationViewerDialogItems.appendChild(li);
+    }
+
+    if (highlightItemId) {
+      const highlighted = findViewerItemRowEl(highlightItemId);
+      if (highlighted) {
+        highlighted.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        searchHighlightRemovalTimeoutId = window.setTimeout(() => {
+          searchHighlightRemovalTimeoutId = 0;
+          findViewerItemRowEl(highlightItemId)?.classList.remove(
+            "viewer-item-row--search-highlight"
+          );
+        }, SEARCH_HIGHLIGHT_DURATION_MS);
+      }
     }
   } catch (error) {
     locationViewerDialogStatus.textContent =
